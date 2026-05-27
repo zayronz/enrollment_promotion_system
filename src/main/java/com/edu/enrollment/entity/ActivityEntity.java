@@ -1,40 +1,37 @@
 package com.edu.enrollment.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("activity")
-public class ActivityEntity {
+public class ActivityEntity extends BaseEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private String name;           // 活动名称
-    private String description;    // 活动简介（富文本）
-    private Integer type;          // 0-线上 1-线下
-    private String location;       // 活动地点
-
-    private LocalDateTime activityStartTime;   // 活动开始时间
-    private LocalDateTime activityEndTime;     // 活动结束时间
-    private LocalDateTime registrationStartTime; // 报名开始时间
-    private LocalDateTime registrationEndTime;   // 报名结束时间
-
-    private String bannerUrl;      // 轮播图URL
-    private String videoUrl;       // 视频URL
-
-    private Integer status;        // 0-草稿 1-发布 2-已结束
-
-    private String auditFlow;      // 审批流程配置JSON
-
-    private Integer maxStudentPerSchool; // 每所学校最多学生数
-    private Integer maxTeacherPerSchool; // 每所学校最多教师数
-
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
+    private String name;
+    private String description;
+    private Integer type;
+    private String location;
+    private LocalDateTime activityStartTime;
+    private LocalDateTime activityEndTime;
+    private LocalDateTime registrationStartTime;
+    private LocalDateTime registrationEndTime;
+    private String bannerUrl;
+    private String videoUrl;
+    private String coverImage;
+    private Integer status;
+    private String auditFlow;
+    private String customFields;
+    private Integer maxStudentPerSchool;
+    private Integer maxTeacherPerSchool;
+    private Integer autoGroup;
+    private Long creatorId;
 }

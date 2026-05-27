@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
+
 @RestController
 @RequestMapping("/api/registration")
 @RequiredArgsConstructor
@@ -14,38 +16,34 @@ public class RegistrationController {
 
     private final RegistrationService registrationService;
 
-    /**
-     * 提交报名
-     */
     @PostMapping("/submit")
-    public ResultVO submit(@RequestBody RegistrationSubmitDTO dto,
-                           @AuthenticationPrincipal Long userId) {
-        return ResultVO.success(registrationService.submit(dto, userId));
+    public ResultVO<Long> submit(@Valid @RequestBody RegistrationSubmitDTO dto,
+                                 @AuthenticationPrincipal Long userId) {
+        Long id = registrationService.submit(dto, userId);
+        return ResultVO.success(id);
     }
 
-    /**
-     * 我的报名列表
-     */
     @GetMapping("/my")
-    public ResultVO myRegistrations(@AuthenticationPrincipal Long userId) {
+    public ResultVO<?> my(@AuthenticationPrincipal Long userId) {
         return ResultVO.success(registrationService.getMyRegistrations(userId));
     }
 
-    /**
-     * 报名详情
-     */
     @GetMapping("/{id}")
-    public ResultVO detail(@PathVariable Long id) {
+    public ResultVO<?> detail(@PathVariable Long id) {
         return ResultVO.success(registrationService.getDetail(id));
     }
 
-    /**
-     * 撤回报名
-     */
     @PutMapping("/{id}/withdraw")
-    public ResultVO withdraw(@PathVariable Long id,
-                             @AuthenticationPrincipal Long userId) {
+    public ResultVO<?> withdraw(@PathVariable Long id,
+                                @AuthenticationPrincipal Long userId) {
         registrationService.withdraw(id, userId);
         return ResultVO.success();
+    }
+
+    @GetMapping("/pending")
+    @PreAuthorize("hasAnyRole('COLLEGE', 'SCHOOL')")
+    public ResultVO<?> pending(@AuthenticationPrincipal Long auditorId,
+                               @RequestParam(defaultValue = "college_audit") String node) {
+        return ResultVO.success(registrationService.getPendingAudit(auditorId, node));
     }
 }

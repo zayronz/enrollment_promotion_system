@@ -8,21 +8,17 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("registration")
-public class RegistrationEntity extends BaseEntity {
+@TableName("feedback")
+public class FeedbackEntity extends BaseEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
     private Long activityId;
     private Long userId;
-    private Integer userType;
-    private String targetSchool;
-    private Integer score;
-    private String formData;
-    private Integer status;
-    private String currentNode;
-    private String rejectReason;
-    private String groupName;
-    private Integer groupRank;
+    private String userRole;
+    private String title;
+    private String content;
+    private String attachmentUrls;
+    private Integer type;
 }
