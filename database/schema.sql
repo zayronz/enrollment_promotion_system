@@ -26,7 +26,8 @@ CREATE TABLE `college` (
                            `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
                            `name` VARCHAR(100) NOT NULL COMMENT '学院名称',
                            `code` VARCHAR(20) NOT NULL COMMENT '学院代码',
-                           `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP
+                           `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                           `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- 3. 活动表
@@ -85,6 +86,7 @@ CREATE TABLE `audit_record` (
                                 `comment` VARCHAR(500) COMMENT '审核意见',
                                 `attachment_urls` TEXT COMMENT '附件URL列表JSON',
                                 `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                 INDEX idx_registration (registration_id)
 );
 
@@ -99,6 +101,7 @@ CREATE TABLE `feedback` (
                             `attachment_urls` TEXT COMMENT '附件URL列表JSON',
                             `type` TINYINT DEFAULT 0 COMMENT '0-个人反馈 1-总结报告',
                             `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                             INDEX idx_activity (activity_id)
 );
 
@@ -112,7 +115,8 @@ CREATE TABLE `attachment` (
                               `related_id` BIGINT COMMENT '关联记录ID',
                               `related_type` VARCHAR(50) COMMENT '关联类型(registration/feedback/audit)',
                               `uploader_id` BIGINT COMMENT '上传人ID',
-                              `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP
+                              `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                              `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- 8. 轮播图表
@@ -123,7 +127,8 @@ CREATE TABLE `banner` (
                           `link_url` VARCHAR(500) COMMENT '跳转链接',
                           `sort_order` INT DEFAULT 0 COMMENT '排序',
                           `status` TINYINT DEFAULT 1 COMMENT '0-隐藏 1-显示',
-                          `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP
+                          `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                          `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- 9. 学校名称标准化词典表
@@ -133,7 +138,8 @@ CREATE TABLE `school_dict` (
                                `alias_names` TEXT COMMENT '别名列表JSON',
                                `province` VARCHAR(50) COMMENT '省份',
                                `city` VARCHAR(50) COMMENT '城市',
-                               `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP
+                               `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                               `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- 插入测试数据
@@ -145,3 +151,11 @@ INSERT INTO `college` (`name`, `code`) VALUES
 -- 注意：测试账号由应用启动时的 DataInitializer 自动创建，
 -- 密码通过 BCryptPasswordEncoder 实时加密，确保哈希值正确。
 -- 如需手动创建用户，可使用注册接口 POST /api/user/register
+
+
+ALTER TABLE `college` ADD COLUMN `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE `feedback` ADD COLUMN `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE `audit_record` ADD COLUMN `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE `attachment` ADD COLUMN `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE `banner` ADD COLUMN `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE `school_dict` ADD COLUMN `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;

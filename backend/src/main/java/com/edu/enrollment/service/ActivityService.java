@@ -179,8 +179,11 @@ public class ActivityService {
         vo.setVideoUrl(entity.getVideoUrl());
         vo.setCoverImage(entity.getCoverImage());
         vo.setStatus(entity.getStatus());
-        vo.setAuditFlow(JSONUtil.parseObj(entity.getAuditFlow()));
-        vo.setCustomFields(JSONUtil.parseArray(entity.getCustomFields()));
+        // 处理可能为 null 的 JSON 字段
+        vo.setAuditFlow(StrUtil.isNotBlank(entity.getAuditFlow())
+                ? JSONUtil.parseObj(entity.getAuditFlow()) : null);
+        vo.setCustomFields(StrUtil.isNotBlank(entity.getCustomFields())
+                ? JSONUtil.parseArray(entity.getCustomFields()) : null);
         vo.setMaxStudentPerSchool(entity.getMaxStudentPerSchool());
         vo.setMaxTeacherPerSchool(entity.getMaxTeacherPerSchool());
         vo.setAutoGroup(entity.getAutoGroup() == 1);

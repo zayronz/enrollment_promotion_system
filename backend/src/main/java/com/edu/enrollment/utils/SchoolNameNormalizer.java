@@ -48,6 +48,9 @@ public class SchoolNameNormalizer {
         // 2. 别名匹配
         List<SchoolDictEntity> allDicts = schoolDictMapper.selectList(null);
         for (SchoolDictEntity dict : allDicts) {
+            if (StrUtil.isBlank(dict.getAliasNames())) {
+                continue;
+            }
             List<String> aliases = JSONUtil.toList(JSONUtil.parseArray(dict.getAliasNames()), String.class);
             if (aliases.contains(trimmed)) {
                 return dict.getStandardName();

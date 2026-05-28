@@ -137,9 +137,14 @@ const rules = {
 }
 
 const fetchActivity = async () => {
+  const id = route.params.id
+  if (!id) {
+    MessagePlugin.error('活动ID无效')
+    return
+  }
   loading.value = true
   try {
-    const res = await activityApi.getActivityDetail(route.params.id)
+    const res = await activityApi.getActivityDetail(id)
     activity.value = res.data
     customFields.value = res.data.customFields || []
 
@@ -169,7 +174,7 @@ const handleSubmit = async (e) => {
       submitting.value = true
       try {
         const payload = {
-          activityId: route.params.id,
+          activityId: Number(route.params.id),
           targetSchool: formData.targetSchool,
           customFields: customFields.value.map((field, index) => ({
             name: field.name,

@@ -87,6 +87,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { activityApi } from '@/api/activity'
 import { registrationApi } from '@/api/registeration'
+import { MessagePlugin } from 'tdesign-vue-next'
 import { TimeIcon, LocationIcon, UsergroupIcon, FileIcon } from 'tdesign-icons-vue-next'
 
 const route = useRoute()
@@ -111,9 +112,14 @@ const canRegister = computed(() => {
 })
 
 const fetchDetail = async () => {
+  const id = route.params.id
+  if (!id) {
+    MessagePlugin.error('活动ID无效')
+    return
+  }
   loading.value = true
   try {
-    const res = await activityApi.getActivityDetail(route.params.id)
+    const res = await activityApi.getActivityDetail(id)
     activity.value = res.data
 
     try {

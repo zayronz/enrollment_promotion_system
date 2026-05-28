@@ -9,6 +9,19 @@ const request = axios.create({
 // 请求拦截器
 request.interceptors.request.use(
     config => {
+        // 拦截 URL 中包含 undefined/null 的非法请求
+        if (config.url && /\/undefined\b|\/null\b|\/NaN\b/.test(config.url)) {
+            MessagePlugin.warning('请求参数不完整，请返回列表页重试')
+            return Promise.reject(new Error('请求URL包含非法参数: undefined/null'))
+        }
+        // 拦截 params 中值为 undefined/null 的字段（防止作为查询参数发送）
+        if (config.params) {
+            Object.keys(config.params).forEach(key => {
+                if (config.params[key] === undefined || config.params[key] === null) {
+                    delete config.params[key]
+                }
+            })
+        }
         const token = localStorage.getItem('token')
         if (token) {
             config.headers.Authorization = `Bearer ${token}`
