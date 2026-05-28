@@ -29,7 +29,12 @@
     </t-header>
     <t-layout class="layout-body">
       <t-aside class="app-aside admin-aside">
-        <t-menu :default-value="$route.path" class="side-menu admin-menu" :default-expanded="['activity', 'audit', 'user', 'feedback']">
+        <t-menu
+          v-model:value="activeMenu"
+          :default-expanded="['activity', 'audit', 'user', 'feedback']"
+          class="side-menu admin-menu"
+          @change="handleMenuChange"
+        >
           <t-menu-item value="/school/dashboard">
             <template #icon><DashboardIcon /></template>
             数据仪表盘
@@ -78,7 +83,8 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { ref, watch, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
 import {
   DashboardIcon, ChevronDownIcon, UserIcon, LogoutIcon,
@@ -88,7 +94,21 @@ import {
 import { DialogPlugin } from 'tdesign-vue-next'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
+
+const activeMenu = ref(route.path)
+
+// 监听路由变化，同步菜单高亮
+watch(() => route.path, (path) => {
+  activeMenu.value = path
+})
+
+const handleMenuChange = (value) => {
+  if (value && value !== route.path) {
+    router.push(value)
+  }
+}
 
 const handleCommand = (data) => {
   if (data.value === 'profile') {

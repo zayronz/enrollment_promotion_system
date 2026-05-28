@@ -8,10 +8,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
+
+import javax.servlet.http.HttpServletResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -52,5 +58,38 @@ public class FileService {
         attachmentMapper.insert(attachment);
 
         return relativePath;
+    }
+
+    /**
+     * 文件下载：根据附件ID下载文件
+     */
+    public void download(Long attachmentId, HttpServletResponse response) throws IOException {
+        AttachmentEntity attachment = attachmentMapper.selectById(attachmentId);
+        if (attachment == null) {
+            throw new RuntimeException("文件不存在");
+        }
+
+        File file = new File(uploadPath + attachment.getFilePath());
+        if (!file.exists()) {
+            throw new RuntimeException("文件已被删除");
+        }
+
+        // 设置响应头
+        String encodedFileName = URLEncoder.encode(attachment.getFileName(), StandardCharsets.UTF_8.toString())
+                .replaceAll("\\+", "%20");
+        response.setContentType("application/octet-stream");
+        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
+        response.setHeader("Content-Length", String.valueOf(file.length()));
+
+        // 流式写出文件
+        try (FileInputStream fis = new FileInputStream(file);
+             OutputStream os = response.getOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                os.write(buffer, 0, bytesRead);
+            }
+            os.flush();
+        }
     }
 }

@@ -109,6 +109,55 @@ public class ActivityService {
         activityMapper.updateById(entity);
     }
 
+    @Transactional
+    public void updateActivity(Long id, ActivityDTO dto, Long userId) {
+        ActivityEntity entity = activityMapper.selectById(id);
+        if (entity == null) {
+            throw new RuntimeException("活动不存在");
+        }
+        if (!entity.getCreatorId().equals(userId)) {
+            throw new RuntimeException("只有创建者可以编辑活动");
+        }
+        // 已发布的活动不允许大幅修改
+        if (entity.getStatus() == 1) {
+            throw new RuntimeException("已发布的活动不允许修改，请先下线");
+        }
+
+        entity.setName(dto.getName());
+        entity.setDescription(dto.getDescription());
+        entity.setType(dto.getType());
+        entity.setLocation(dto.getLocation());
+        entity.setActivityStartTime(dto.getActivityStartTime());
+        entity.setActivityEndTime(dto.getActivityEndTime());
+        entity.setRegistrationStartTime(dto.getRegistrationStartTime());
+        entity.setRegistrationEndTime(dto.getRegistrationEndTime());
+        entity.setBannerUrl(dto.getBannerUrl());
+        entity.setVideoUrl(dto.getVideoUrl());
+        entity.setCoverImage(dto.getCoverImage());
+        entity.setAuditFlow(JSONUtil.toJsonStr(dto.getAuditFlow()));
+        entity.setCustomFields(JSONUtil.toJsonStr(dto.getCustomFields()));
+        entity.setMaxStudentPerSchool(dto.getMaxStudentPerSchool());
+        entity.setMaxTeacherPerSchool(dto.getMaxTeacherPerSchool());
+        entity.setAutoGroup(dto.getAutoGroup() ? 1 : 0);
+
+        activityMapper.updateById(entity);
+    }
+
+    @Transactional
+    public void deleteActivity(Long id, Long userId) {
+        ActivityEntity entity = activityMapper.selectById(id);
+        if (entity == null) {
+            throw new RuntimeException("活动不存在");
+        }
+        if (!entity.getCreatorId().equals(userId)) {
+            throw new RuntimeException("只有创建者可以删除活动");
+        }
+        if (entity.getStatus() == 1) {
+            throw new RuntimeException("已发布的活动不允许删除");
+        }
+        activityMapper.deleteById(id);
+    }
+
     public List<ActivityVO> getOpenActivities() {
         List<ActivityEntity> entities = activityMapper.selectOpenActivities();
         return entities.stream().map(this::toVO).collect(Collectors.toList());

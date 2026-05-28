@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @RestController
@@ -23,5 +24,10 @@ public class FileController {
                                    @CurrentUserId Long userId) throws IOException {
         String path = fileService.upload(file, relatedId, relatedType, userId);
         return ResultVO.success(path);
+    }
+
+    @GetMapping("/download/{id}")
+    public void download(@PathVariable Long id, HttpServletResponse response) throws IOException {
+        fileService.download(id, response);
     }
 }

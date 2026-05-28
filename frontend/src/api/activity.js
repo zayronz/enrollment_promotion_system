@@ -21,6 +21,16 @@ export const activityApi = {
         return request.post('/activity/create', data)
     },
 
+    // 更新活动
+    updateActivity(id, data) {
+        return request.put(`/activity/${id}`, data)
+    },
+
+    // 删除活动
+    deleteActivity(id) {
+        return request.delete(`/activity/${id}`)
+    },
+
     // 发布活动
     publishActivity(id) {
         return request.put(`/activity/${id}/publish`)

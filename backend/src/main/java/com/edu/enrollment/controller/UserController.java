@@ -1,8 +1,6 @@
 package com.edu.enrollment.controller;
 
-import com.edu.enrollment.dto.LoginDTO;
-import com.edu.enrollment.dto.UserDTO;
-import com.edu.enrollment.dto.UserRegisterDTO;
+import com.edu.enrollment.dto.*;
 import com.edu.enrollment.security.CurrentUserId;
 import com.edu.enrollment.service.UserService;
 import com.edu.enrollment.vo.ResultVO;
@@ -46,6 +44,26 @@ public class UserController {
     @PostMapping("/create")
     public ResultVO<?> create(@Valid @RequestBody UserDTO dto) {
         userService.createUser(dto);
+        return ResultVO.success();
+    }
+
+    @PutMapping("/{id}")
+    public ResultVO<?> update(@PathVariable Long id,
+                              @Valid @RequestBody UserUpdateDTO dto) {
+        userService.updateUser(id, dto);
+        return ResultVO.success();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResultVO<?> delete(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResultVO.success();
+    }
+
+    @PutMapping("/password")
+    public ResultVO<?> changePassword(@Valid @RequestBody PasswordChangeDTO dto,
+                                      @CurrentUserId Long userId) {
+        userService.changePassword(userId, dto);
         return ResultVO.success();
     }
 }

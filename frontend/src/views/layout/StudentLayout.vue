@@ -32,7 +32,7 @@
     </t-header>
     <t-layout class="layout-body">
       <t-aside class="app-aside">
-        <t-menu :default-value="$route.path" theme="light" class="side-menu">
+        <t-menu v-model:value="activeMenu" theme="light" class="side-menu" @change="handleMenuChange">
           <t-menu-item value="/student/activities">
             <template #icon><BrowseIcon /></template>
             活动列表
@@ -57,13 +57,27 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
 import { BookOpenIcon, ChevronDownIcon, UserIcon, LockOnIcon, LogoutIcon, BrowseIcon, FileIcon, ChatIcon } from 'tdesign-icons-vue-next'
 import { DialogPlugin } from 'tdesign-vue-next'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
+
+const activeMenu = ref(route.path)
+
+watch(() => route.path, (path) => {
+  activeMenu.value = path
+})
+
+const handleMenuChange = (value) => {
+  if (value && value !== route.path) {
+    router.push(value)
+  }
+}
 
 const handleCommand = (data) => {
   if (data.value === 'profile') {

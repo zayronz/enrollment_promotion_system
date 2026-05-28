@@ -35,6 +35,9 @@ request.interceptors.response.use(
             MessagePlugin.error('登录已过期，请重新登录')
             localStorage.removeItem('token')
             window.location.href = '/login'
+        } else if (error.response?.data?.message) {
+            // 优先使用后端返回的具体错误信息
+            MessagePlugin.error(error.response.data.message)
         } else {
             MessagePlugin.error(error.message || '网络错误')
         }

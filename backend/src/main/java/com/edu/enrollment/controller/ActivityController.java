@@ -51,4 +51,21 @@ public class ActivityController {
         activityService.publishActivity(id, userId);
         return ResultVO.success();
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('SCHOOL')")
+    public ResultVO<?> update(@PathVariable Long id,
+                              @Valid @RequestBody ActivityDTO dto,
+                              @CurrentUserId Long userId) {
+        activityService.updateActivity(id, dto, userId);
+        return ResultVO.success();
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SCHOOL')")
+    public ResultVO<?> delete(@PathVariable Long id,
+                              @CurrentUserId Long userId) {
+        activityService.deleteActivity(id, userId);
+        return ResultVO.success();
+    }
 }

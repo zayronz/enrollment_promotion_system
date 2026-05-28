@@ -1,6 +1,5 @@
 package com.edu.enrollment.service;
 
-import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.edu.enrollment.dto.RegistrationSubmitDTO;
@@ -122,10 +121,26 @@ public class RegistrationService {
     }
 
     public List<RegistrationEntity> getPendingAudit(Long auditorId, String node) {
+        UserEntity auditor = userService.getById(auditorId);
+
         LambdaQueryWrapper<RegistrationEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(RegistrationEntity::getStatus, 0)
                 .eq(RegistrationEntity::getCurrentNode, node);
-        // TODO: 根据审核人权限过滤（学院审核只能看本学院学生）
+
+        // 学院审核员只能看到本学院用户的报名
+        if ("COLLEGE".equals(auditor.getRole())) {
+            // 查询本学院所有用户的报名记录
+            List<UserEntity> collegeUsers = userService.getByCollegeId(auditor.getCollegeId());
+            if (collegeUsers.isEmpty()) {
+                return List.of();
+            }
+            List<Long> collegeUserIds = collegeUsers.stream()
+                    .map(UserEntity::getId)
+                    .collect(Collectors.toList());
+            wrapper.in(RegistrationEntity::getUserId, collegeUserIds);
+        }
+
+        wrapper.orderByDesc(RegistrationEntity::getCreateTime);
         return registrationMapper.selectList(wrapper);
     }
 }

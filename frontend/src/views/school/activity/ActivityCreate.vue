@@ -131,7 +131,6 @@ import FileUploader from '@/components/business/FileUploader.vue'
 import RichTextEditor from '@/components/business/RichTextEditor.vue'
 
 const router = useRouter()
-const loading = ref(false)
 const submitting = ref(false)
 const publishing = ref(false)
 const formRef = ref(null)
@@ -210,7 +209,7 @@ const handleSubmit = async () => {
       router.push('/school/activity/list')
     }
   } catch (error) {
-    MessagePlugin.error('保存失败')
+    console.error('保存失败', error)
   } finally {
     submitting.value = false
   }
@@ -224,15 +223,13 @@ const handlePublish = async () => {
   try {
     const data = buildSubmitData()
     const createRes = await activityApi.createActivity(data)
-    if (createRes.code === 200) {
-      const publishRes = await activityApi.publishActivity(createRes.data)
-      if (publishRes.code === 200) {
-        MessagePlugin.success('发布成功')
-        router.push('/school/activity/list')
-      }
+    if (createRes.code === 200 && createRes.data) {
+      await activityApi.publishActivity(createRes.data)
+      MessagePlugin.success('发布成功')
+      router.push('/school/activity/list')
     }
   } catch (error) {
-    MessagePlugin.error('发布失败')
+    console.error('发布失败', error)
   } finally {
     publishing.value = false
   }

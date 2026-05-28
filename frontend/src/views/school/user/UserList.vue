@@ -267,8 +267,8 @@ const handleSave = async () => {
   saving.value = true
   try {
     if (editMode.value) {
-      const { password, ...updateData } = form.value
-      await userApi.updateUser(updateData)
+      const { id, password, ...updateData } = form.value
+      await userApi.updateUser(id, updateData)
       MessagePlugin.success('修改成功')
     } else {
       await userApi.createUser(form.value)
@@ -285,7 +285,7 @@ const handleSave = async () => {
 
 const toggleStatus = async (row, status) => {
   try {
-    await userApi.updateUser({ id: row.id, status })
+    await userApi.updateUser(row.id, { status })
     MessagePlugin.success(status === 'ACTIVE' ? '已启用' : '已禁用')
     fetchData()
   } catch (err) {

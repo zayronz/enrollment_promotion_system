@@ -16,7 +16,7 @@
     </t-header>
     <t-layout class="layout-body">
       <t-aside class="app-aside">
-        <t-menu :default-value="$route.path" theme="light" class="side-menu">
+        <t-menu v-model:value="activeMenu" theme="light" class="side-menu" @change="handleMenuChange">
           <t-menu-item value="/teacher/activities">
             <template #icon><BrowseIcon /></template>
             活动报名
@@ -45,10 +45,24 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { UserBusinessIcon, LogoutIcon, BrowseIcon, FileIcon, ChatIcon, UserIcon } from 'tdesign-icons-vue-next'
 
 const router = useRouter()
+const route = useRoute()
+
+const activeMenu = ref(route.path)
+
+watch(() => route.path, (path) => {
+  activeMenu.value = path
+})
+
+const handleMenuChange = (value) => {
+  if (value && value !== route.path) {
+    router.push(value)
+  }
+}
 
 const handleLogout = () => {
   localStorage.clear()

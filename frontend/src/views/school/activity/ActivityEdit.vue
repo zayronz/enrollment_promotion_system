@@ -248,11 +248,11 @@ const handleSave = async () => {
   submitting.value = true
   try {
     const data = buildSubmitData()
-    const res = await activityApi.updateActivity(data)
-    if (res.code === 200) {
-      MessagePlugin.success('保存成功')
-      router.push('/school/activity/list')
-    }
+    const activityId = data.id
+    delete data.id
+    await activityApi.updateActivity(activityId, data)
+    MessagePlugin.success('保存成功')
+    router.push('/school/activity/list')
   } catch (error) {
     MessagePlugin.error('保存失败')
   } finally {
@@ -266,13 +266,13 @@ const handleSaveAndPublish = async () => {
 
   publishing.value = true
   try {
-    form.status = 'PUBLISHED'
     const data = buildSubmitData()
-    const res = await activityApi.updateActivity(data)
-    if (res.code === 200) {
-      MessagePlugin.success('保存并发布成功')
-      router.push('/school/activity/list')
-    }
+    const activityId = data.id
+    delete data.id
+    await activityApi.updateActivity(activityId, data)
+    await activityApi.publishActivity(activityId)
+    MessagePlugin.success('保存并发布成功')
+    router.push('/school/activity/list')
   } catch (error) {
     MessagePlugin.error('操作失败')
   } finally {

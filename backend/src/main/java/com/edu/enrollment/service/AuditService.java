@@ -44,6 +44,9 @@ public class AuditService {
         auditRecordMapper.insert(auditRecord);
 
         if (dto.getPassed()) {
+            // 通过前校验名额限制
+            checkQuotaLimit(registration, activity);
+
             // 通过：判断是否还有下一级审批
             if (hasNextNode(registration.getCurrentNode(), activity)) {
                 registration.setCurrentNode(getNextNode(registration.getCurrentNode()));
@@ -71,6 +74,32 @@ public class AuditService {
             return "school_audit";
         }
         return "completed";
+    }
+
+    /**
+     * 校验名额限制
+     */
+    private void checkQuotaLimit(RegistrationEntity registration, ActivityEntity activity) {
+        // 查找同学校已通过的报名
+        List<RegistrationEntity> sameSchoolPassed = registrationMapper.findByActivityAndSchool(
+                registration.getActivityId(), registration.getTargetSchool());
+        long passedCount = sameSchoolPassed.stream()
+                .filter(r -> r.getStatus() == 1 || r.getStatus() == 2) // 学院通过或学校通过
+                .count();
+
+        if (registration.getUserType() == 0) { // 学生
+            if (activity.getMaxStudentPerSchool() != null
+                    && passedCount >= activity.getMaxStudentPerSchool()) {
+                throw new RuntimeException("该学校学生名额已满（上限："
+                        + activity.getMaxStudentPerSchool() + "人）");
+            }
+        } else { // 教师
+            if (activity.getMaxTeacherPerSchool() != null
+                    && passedCount >= activity.getMaxTeacherPerSchool()) {
+                throw new RuntimeException("该学校教师名额已满（上限："
+                        + activity.getMaxTeacherPerSchool() + "人）");
+            }
+        }
     }
 
     @Transactional

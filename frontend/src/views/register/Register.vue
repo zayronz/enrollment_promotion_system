@@ -1,29 +1,44 @@
 <template>
-  <div class="register-container">
+  <div class="register-wrapper">
     <div class="register-card">
       <div class="register-header">
-        <h2>用户注册</h2>
-        <p>加入招生宣传报名系统</p>
+        <div class="header-icon-box">
+          <UserAddIcon class="header-icon" />
+        </div>
+        <h2 class="header-title">创建账号</h2>
+        <p class="header-desc">加入武汉理工大学招生宣传报名系统</p>
       </div>
 
-      <t-form :data="form" :rules="rules" ref="formRef" label-width="100px" @submit="handleRegister">
+      <t-form :data="form" :rules="rules" ref="formRef" label-width="0" @submit="handleRegister">
         <!-- 角色选择 -->
-        <t-form-item label="用户类型" name="role">
-          <t-radio-group v-model="form.role">
-            <t-radio value="STUDENT">学生</t-radio>
-            <t-radio value="TEACHER">教师</t-radio>
-          </t-radio-group>
-        </t-form-item>
+        <div class="role-selector">
+          <div
+            class="role-option"
+            :class="{ active: form.role === 'STUDENT' }"
+            @click="form.role = 'STUDENT'"
+          >
+            <t-icon name="user" class="role-option-icon" />
+            <span class="role-option-label">学生注册</span>
+          </div>
+          <div
+            class="role-option"
+            :class="{ active: form.role === 'TEACHER' }"
+            @click="form.role = 'TEACHER'"
+          >
+            <t-icon name="user-business" class="role-option-icon" />
+            <span class="role-option-label">教师注册</span>
+          </div>
+        </div>
 
         <!-- 学生专属字段 -->
         <template v-if="form.role === 'STUDENT'">
-          <t-form-item label="学号" name="username">
-            <t-input v-model="form.username" placeholder="请输入学号">
+          <t-form-item name="username">
+            <t-input v-model="form.username" placeholder="请输入学号" size="large" clearable>
               <template #prefix-icon><t-icon name="user" /></template>
             </t-input>
           </t-form-item>
-          <t-form-item label="学院" name="collegeId">
-            <t-select v-model="form.collegeId" placeholder="请选择学院" style="width: 100%">
+          <t-form-item name="collegeId">
+            <t-select v-model="form.collegeId" placeholder="请选择学院" size="large" clearable>
               <t-option
                 v-for="college in colleges"
                 :key="college.id"
@@ -32,23 +47,29 @@
               />
             </t-select>
           </t-form-item>
-          <t-form-item label="年级" name="grade">
-            <t-input-number v-model="form.grade" :min="1" :max="5" placeholder="年级" theme="normal" style="width: 100%" />
-          </t-form-item>
-          <t-form-item label="绩点" name="gpa">
-            <t-input-number v-model="form.gpa" :min="0" :max="5" :decimal-places="2" step="0.1" placeholder="绩点" theme="normal" style="width: 100%" />
-          </t-form-item>
+          <t-row :gutter="16">
+            <t-col :span="6">
+              <t-form-item name="grade">
+                <t-input-number v-model="form.grade" :min="1" :max="5" placeholder="年级" theme="normal" size="large" style="width: 100%" />
+              </t-form-item>
+            </t-col>
+            <t-col :span="6">
+              <t-form-item name="gpa">
+                <t-input-number v-model="form.gpa" :min="0" :max="5" :decimal-places="2" step="0.1" placeholder="绩点" theme="normal" size="large" style="width: 100%" />
+              </t-form-item>
+            </t-col>
+          </t-row>
         </template>
 
         <!-- 教师专属字段 -->
         <template v-if="form.role === 'TEACHER'">
-          <t-form-item label="工号" name="username">
-            <t-input v-model="form.username" placeholder="请输入工号">
+          <t-form-item name="username">
+            <t-input v-model="form.username" placeholder="请输入工号" size="large" clearable>
               <template #prefix-icon><t-icon name="user" /></template>
             </t-input>
           </t-form-item>
-          <t-form-item label="所属学院" name="collegeId">
-            <t-select v-model="form.collegeId" placeholder="请选择学院" style="width: 100%">
+          <t-form-item name="collegeId">
+            <t-select v-model="form.collegeId" placeholder="请选择所属学院" size="large" clearable>
               <t-option
                 v-for="college in colleges"
                 :key="college.id"
@@ -60,45 +81,45 @@
         </template>
 
         <!-- 公共字段 -->
-        <t-form-item label="姓名" name="realName">
-          <t-input v-model="form.realName" placeholder="请输入真实姓名">
-            <template #prefix-icon><t-icon name="user" /></template>
+        <t-form-item name="realName">
+          <t-input v-model="form.realName" placeholder="请输入真实姓名" size="large" clearable>
+            <template #prefix-icon><t-icon name="user-circle" /></template>
           </t-input>
         </t-form-item>
 
-        <t-form-item label="密码" name="password">
-          <t-input v-model="form.password" type="password" placeholder="请输入密码（至少6位）">
+        <t-form-item name="password">
+          <t-input v-model="form.password" type="password" placeholder="请输入密码（至少6位）" size="large" clearable>
             <template #prefix-icon><t-icon name="lock-on" /></template>
           </t-input>
         </t-form-item>
 
-        <t-form-item label="确认密码" name="confirmPassword">
-          <t-input v-model="form.confirmPassword" type="password" placeholder="请再次输入密码">
+        <t-form-item name="confirmPassword">
+          <t-input v-model="form.confirmPassword" type="password" placeholder="请再次输入密码" size="large" clearable>
             <template #prefix-icon><t-icon name="lock-on" /></template>
           </t-input>
         </t-form-item>
 
-        <t-form-item label="邮箱" name="email">
-          <t-input v-model="form.email" placeholder="请输入邮箱">
+        <t-form-item name="email">
+          <t-input v-model="form.email" placeholder="请输入邮箱（选填）" size="large" clearable>
             <template #prefix-icon><t-icon name="mail" /></template>
           </t-input>
         </t-form-item>
 
-        <t-form-item label="手机号" name="phone">
-          <t-input v-model="form.phone" placeholder="请输入手机号">
+        <t-form-item name="phone">
+          <t-input v-model="form.phone" placeholder="请输入手机号（选填）" size="large" clearable>
             <template #prefix-icon><t-icon name="call" /></template>
           </t-input>
         </t-form-item>
 
         <t-form-item>
-          <t-button theme="primary" size="large" block type="submit" :loading="loading">
+          <t-button theme="primary" size="large" block type="submit" :loading="loading" class="submit-btn">
             注 册
           </t-button>
         </t-form-item>
 
         <div class="register-footer">
-          已有账号？
-          <t-link theme="primary" @click="goToLogin">立即登录</t-link>
+          <span>已有账号？</span>
+          <t-link theme="primary" hover="color" @click="goToLogin">立即登录</t-link>
         </div>
       </t-form>
     </div>
@@ -106,9 +127,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import { UserAddIcon } from 'tdesign-icons-vue-next'
+import { userApi } from '@/api/user'
 import request from '@/utils/request'
 
 const router = useRouter()
@@ -157,37 +180,46 @@ const validateConfirmPassword = (val) => {
   return { result: true }
 }
 
-// 表单校验规则 (TDesign 校验规则格式)
-const rules = {
-  role: [{ required: true, message: '请选择用户类型', type: 'error' }],
-  username: [
-    { required: true, message: '请输入学号/工号', type: 'error' },
-    { min: 6, message: '长度不能少于6个字符', type: 'error' },
-    { max: 20, message: '长度不能超过20个字符', type: 'error' }
-  ],
-  realName: [
-    { required: true, message: '请输入真实姓名', type: 'error' },
-    { min: 2, message: '长度不能少于2个字符', type: 'error' },
-    { max: 20, message: '长度不能超过20个字符', type: 'error' }
-  ],
-  password: [
-    { required: true, message: '请输入密码', type: 'error' },
-    { min: 6, message: '密码长度不能少于6个字符', type: 'error' },
-    { max: 20, message: '密码长度不能超过20个字符', type: 'error' }
-  ],
-  confirmPassword: [
-    { required: true, message: '请确认密码', type: 'error' },
-    { validator: validateConfirmPassword }
-  ],
-  email: [
-    { email: true, message: '请输入正确的邮箱地址', type: 'error' },
-    { validator: validateEmail }
-  ],
-  phone: [{ validator: validatePhone }],
-  collegeId: [{ required: true, message: '请选择学院', type: 'error' }],
-  grade: [{ required: true, message: '请输入年级', type: 'error' }],
-  gpa: [{ required: true, message: '请输入绩点', type: 'error' }]
-}
+// 动态校验规则：教师不需要 grade/gpa
+const rules = computed(() => {
+  const baseCommon = {
+    role: [{ required: true, message: '请选择用户类型', type: 'error' }],
+    username: [
+      { required: true, message: form.role === 'STUDENT' ? '请输入学号' : '请输入工号', type: 'error' },
+      { min: 6, message: '长度不能少于6个字符', type: 'error' },
+      { max: 20, message: '长度不能超过20个字符', type: 'error' }
+    ],
+    realName: [
+      { required: true, message: '请输入真实姓名', type: 'error' },
+      { min: 2, message: '姓名至少2个字符', type: 'error' },
+      { max: 20, message: '姓名不能超过20个字符', type: 'error' }
+    ],
+    password: [
+      { required: true, message: '请输入密码', type: 'error' },
+      { min: 6, message: '密码长度不能少于6个字符', type: 'error' },
+      { max: 20, message: '密码长度不能超过20个字符', type: 'error' }
+    ],
+    confirmPassword: [
+      { required: true, message: '请确认密码', type: 'error' },
+      { validator: validateConfirmPassword }
+    ],
+    email: [
+      { email: true, message: '请输入正确的邮箱地址', type: 'error' },
+      { validator: validateEmail }
+    ],
+    phone: [{ validator: validatePhone }],
+    collegeId: [{ required: true, message: '请选择学院', type: 'error' }]
+  }
+
+  if (form.role === 'STUDENT') {
+    return {
+      ...baseCommon,
+      grade: [{ required: true, message: '请输入年级', type: 'error' }],
+      gpa: [{ required: true, message: '请输入绩点', type: 'error' }]
+    }
+  }
+  return baseCommon
+})
 
 // 获取学院列表
 const fetchColleges = async () => {
@@ -200,6 +232,15 @@ const fetchColleges = async () => {
     console.error('获取学院列表失败', error)
   }
 }
+
+// 角色切换时清除校验状态
+watch(() => form.role, () => {
+  formRef.value?.clearValidate()
+  // 切换角色时清空学号/工号
+  form.username = ''
+  form.grade = null
+  form.gpa = null
+})
 
 // 注册
 const handleRegister = async ({ validateResult, firstError }) => {
@@ -217,22 +258,24 @@ const handleRegister = async ({ validateResult, firstError }) => {
       email: form.email,
       phone: form.phone,
       role: form.role,
-      collegeId: form.collegeId,
-      grade: form.grade,
-      gpa: form.gpa
+      collegeId: form.collegeId
+    }
+    // 学生额外提交 grade 和 gpa
+    if (form.role === 'STUDENT') {
+      submitData.grade = form.grade
+      submitData.gpa = form.gpa
     }
 
-    const res = await request.post('/user/register', submitData)
+    const res = await userApi.register(submitData)
     if (res.code === 200) {
-      MessagePlugin.success('注册成功，请登录')
+      MessagePlugin.success('注册成功，即将跳转登录页')
       setTimeout(() => {
         router.push('/login')
       }, 1500)
-    } else {
-      MessagePlugin.error(res.message || '注册失败')
     }
   } catch (error) {
-    MessagePlugin.error(error.response?.data?.message || '注册失败，请稍后重试')
+    // 响应拦截器已显示错误提示，此处仅补充兜底
+    console.error('注册失败', error)
   } finally {
     loading.value = false
   }
@@ -248,39 +291,153 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.register-container {
+.register-wrapper {
   min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 40px 20px;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 30%, #dce6ff 60%, #f0f4ff 100%);
+  padding: 24px 20px;
 }
+
 .register-card {
-  width: 550px;
-  padding: 32px 40px;
-  background: white;
+  width: 480px;
+  padding: 40px 40px 32px;
+  background: #fff;
   border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 82, 217, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
 }
+
 .register-header {
   text-align: center;
   margin-bottom: 32px;
 }
-.register-header h2 {
+
+.header-icon-box {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--td-brand-color-6), var(--td-brand-color-7));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 4px 16px rgba(0, 82, 217, 0.2);
+}
+
+.header-icon {
   font-size: 28px;
-  color: #333;
-  margin-bottom: 8px;
+  color: #fff;
 }
-.register-header p {
-  color: #666;
+
+.header-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--td-text-color-primary);
+  margin: 0 0 8px;
+  letter-spacing: 1px;
+}
+
+.header-desc {
   font-size: 14px;
+  color: var(--td-text-color-secondary);
+  margin: 0;
+  letter-spacing: 0.5px;
 }
+
+/* 角色选择器 */
+.role-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.role-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 2px solid var(--td-border-level-1-color);
+  background: var(--td-bg-color-secondarycontainer);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  user-select: none;
+}
+
+.role-option:hover {
+  border-color: var(--td-brand-color-4);
+  background: var(--td-brand-color-light);
+}
+
+.role-option.active {
+  border-color: var(--td-brand-color);
+  background: var(--td-brand-color-light);
+  box-shadow: 0 0 0 3px var(--td-brand-color-1);
+}
+
+.role-option-icon {
+  font-size: 18px;
+  color: var(--td-text-color-secondary);
+  transition: color 0.25s;
+}
+
+.role-option.active .role-option-icon {
+  color: var(--td-brand-color);
+}
+
+.role-option-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--td-text-color-secondary);
+  transition: color 0.25s;
+}
+
+.role-option.active .role-option-label {
+  color: var(--td-brand-color);
+}
+
+/* 表单间距 */
+:deep(.t-form__item) {
+  margin-bottom: 20px;
+}
+
+:deep(.t-input) {
+  border-radius: 8px;
+}
+
+:deep(.t-select) {
+  border-radius: 8px;
+}
+
+.submit-btn {
+  margin-top: 4px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  height: 48px;
+}
+
 .register-footer {
   text-align: center;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #eee;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--td-border-level-1-color);
   font-size: 14px;
+  color: var(--td-text-color-secondary);
+}
+
+.register-footer span {
+  margin-right: 4px;
+}
+
+@media (max-width: 520px) {
+  .register-card {
+    width: 100%;
+    padding: 28px 20px 24px;
+  }
 }
 </style>

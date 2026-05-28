@@ -11,5 +11,12 @@ export const fileApi = {
         return request.post('/file/upload', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
+    },
+
+    // 下载文件
+    downloadFile(id) {
+        return request.get(`/file/download/${id}`, {
+            responseType: 'blob'
+        })
     }
 }
