@@ -8,6 +8,12 @@ const routes = [
         component: () => import('@/views/login/Login.vue'),
         meta: { requiresAuth: false }
     },
+    {
+        path: '/forgot-password',
+        name: 'ForgotPassword',
+        component: () => import('@/views/login/ForgotPassword.vue'),
+        meta: { requiresAuth: false }
+    },
     // 在 routes 数组中添加
     {
         path: '/register',
@@ -63,6 +69,7 @@ const routes = [
             { path: 'activity/list', name: 'ActivityList', component: () => import('@/views/school/activity/ActivityList.vue') },
             { path: 'activity/create', name: 'ActivityCreate', component: () => import('@/views/school/activity/ActivityCreate.vue') },
             { path: 'activity/edit/:id', name: 'ActivityEdit', component: () => import('@/views/school/activity/ActivityEdit.vue') },
+            { path: 'activity/detail/:id', name: 'ActivityDetail', component: () => import('@/views/school/activity/ActivityDetail.vue') },
             { path: 'audit/pending', name: 'SchoolPendingAudit', component: () => import('@/views/school/audit/PendingAudit.vue') },
             { path: 'user/list', name: 'UserList', component: () => import('@/views/school/user/UserList.vue') },
             { path: 'feedback/list', name: 'AllFeedbacks', component: () => import('@/views/school/feedback/AllFeedbacks.vue') }

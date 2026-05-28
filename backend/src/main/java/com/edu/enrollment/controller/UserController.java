@@ -66,4 +66,10 @@ public class UserController {
         userService.changePassword(userId, dto);
         return ResultVO.success();
     }
+
+    @PostMapping("/forgot-password")
+    public ResultVO<?> forgotPassword(@Valid @RequestBody ForgotPasswordDTO dto) {
+        userService.forgotPassword(dto);
+        return ResultVO.success("密码重置成功，请使用新密码登录");
+    }
 }

@@ -9,5 +9,10 @@ export const auditApi = {
     // 批量审核
     batchAudit(data) {
         return request.post('/audit/batch', data)
+    },
+
+    // 获取审核历史
+    getHistory(params) {
+        return request.get('/audit/history', { params })
     }
 }

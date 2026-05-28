@@ -119,6 +119,7 @@ import { ref, onMounted } from 'vue'
 import { registrationApi } from '@/api/registeration'
 import { auditApi } from '@/api/audit'
 import { activityApi } from '@/api/activity'
+import request from '@/utils/request'
 import { SearchIcon, CheckCircleIcon, CloseCircleIcon } from 'tdesign-icons-vue-next'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 
@@ -158,6 +159,7 @@ const fetchData = async () => {
     const res = await registrationApi.getPendingAudit({
       page: pagination.value.current,
       size: pagination.value.pageSize,
+      node: 'school_audit',
       keyword: keyword.value || undefined,
       activityId: activityFilter.value || undefined,
       collegeId: collegeFilter.value || undefined
@@ -173,16 +175,18 @@ const fetchData = async () => {
 
 const fetchOptions = async () => {
   try {
-    const res = await activityApi.getActivityList({ page: 1, size: 100 })
-    activityOptions.value = (res.data?.records || []).map(a => ({
+    const [actRes, colRes] = await Promise.all([
+      activityApi.getActivityList({ page: 1, size: 100 }),
+      request.get('/college/list')
+    ])
+    activityOptions.value = (actRes.data?.records || []).map(a => ({
       value: a.id,
-      label: a.title
+      label: a.name
     }))
-    collegeOptions.value = [
-      { value: '1', label: '计算机科学与技术学院' },
-      { value: '2', label: '理学院' },
-      { value: '3', label: '管理学院' }
-    ]
+    collegeOptions.value = (colRes.data?.data || colRes.data || []).map(c => ({
+      value: String(c.id || c.collegeId),
+      label: c.name || c.collegeName || String(c.id)
+    }))
   } catch (err) {
     console.error(err)
   }
@@ -218,7 +222,7 @@ const handleAudit = (id, result) => {
 
 const doSingleAudit = async (id, result) => {
   try {
-    await auditApi.audit({ registrationId: id, result, comment: auditComment.value || '' })
+    await auditApi.audit({ registrationId: id, passed: result === 'APPROVED', comment: auditComment.value || '' })
     MessagePlugin.success('操作成功')
     dialogVisible.value = false
     fetchData()
@@ -240,7 +244,7 @@ const batchAudit = (result) => {
     confirmBtn: { content: `确定${label}`, theme: result === 'APPROVED' ? 'success' : 'warning' },
     onConfirm: async () => {
       try {
-        await auditApi.batchAudit({ ids: selectedIds.value, result })
+        await auditApi.batchAudit({ ids: selectedIds.value, passed: result === 'APPROVED', comment: '' })
         MessagePlugin.success(`已${label} ${selectedIds.value.length} 条报名`)
         selectedIds.value = []
         fetchData()

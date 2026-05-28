@@ -33,7 +33,11 @@
           </div>
         </div>
         <div class="sidebar-actions">
-          <t-button theme="default" variant="outline" block @click="showPasswordDialog = true">
+          <t-button theme="primary" variant="outline" block @click="goHome">
+            <template #icon><HomeIcon /></template>
+            回到首页
+          </t-button>
+          <t-button theme="default" variant="outline" block @click="showPasswordDialog = true" style="margin-top: 10px;">
             <template #icon><LockOnIcon /></template>
             修改密码
           </t-button>
@@ -113,11 +117,14 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
 import { userApi } from '@/api/user'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { LockOnIcon } from 'tdesign-icons-vue-next'
+import { LockOnIcon, HomeIcon } from 'tdesign-icons-vue-next'
 
+const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const formRef = ref(null)
 const pwdFormRef = ref(null)
@@ -213,8 +220,23 @@ const handlePasswordChange = async () => {
   }
 }
 
+const goHome = () => {
+  const roleHomeMap = {
+    STUDENT: '/student/activities',
+    TEACHER: '/teacher/activities',
+    COLLEGE: '/college/pending',
+    SCHOOL: '/school/dashboard'
+  }
+  const target = roleHomeMap[userStore.role] || '/'
+  router.push(target)
+}
+
 onMounted(() => {
   resetForm()
+  // 如果路由带 action=password 参数，自动弹出修改密码弹窗
+  if (route.query.action === 'password') {
+    showPasswordDialog.value = true
+  }
 })
 </script>
 

@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.edu.enrollment.dto.ActivityDTO;
 import com.edu.enrollment.entity.ActivityEntity;
 import com.edu.enrollment.entity.UserEntity;
+import com.edu.enrollment.exception.BusinessException;
 import com.edu.enrollment.mapper.ActivityMapper;
 import com.edu.enrollment.vo.ActivityVO;
 import lombok.RequiredArgsConstructor;
@@ -65,7 +66,7 @@ public class ActivityService {
     public ActivityVO getDetail(Long id) {
         ActivityEntity entity = activityMapper.selectById(id);
         if (entity == null) {
-            throw new RuntimeException("活动不存在");
+            throw new BusinessException("活动不存在");
         }
         return toVO(entity);
     }
@@ -100,10 +101,10 @@ public class ActivityService {
     public void publishActivity(Long id, Long userId) {
         ActivityEntity entity = activityMapper.selectById(id);
         if (entity == null) {
-            throw new RuntimeException("活动不存在");
+            throw new BusinessException("活动不存在");
         }
         if (!entity.getCreatorId().equals(userId)) {
-            throw new RuntimeException("只有创建者可以发布活动");
+            throw new BusinessException("只有创建者可以发布活动");
         }
         entity.setStatus(1);
         activityMapper.updateById(entity);
@@ -113,14 +114,14 @@ public class ActivityService {
     public void updateActivity(Long id, ActivityDTO dto, Long userId) {
         ActivityEntity entity = activityMapper.selectById(id);
         if (entity == null) {
-            throw new RuntimeException("活动不存在");
+            throw new BusinessException("活动不存在");
         }
         if (!entity.getCreatorId().equals(userId)) {
-            throw new RuntimeException("只有创建者可以编辑活动");
+            throw new BusinessException("只有创建者可以编辑活动");
         }
         // 已发布的活动不允许大幅修改
         if (entity.getStatus() == 1) {
-            throw new RuntimeException("已发布的活动不允许修改，请先下线");
+            throw new BusinessException("已发布的活动不允许修改，请先下线");
         }
 
         entity.setName(dto.getName());
@@ -147,13 +148,13 @@ public class ActivityService {
     public void deleteActivity(Long id, Long userId) {
         ActivityEntity entity = activityMapper.selectById(id);
         if (entity == null) {
-            throw new RuntimeException("活动不存在");
+            throw new BusinessException("活动不存在");
         }
         if (!entity.getCreatorId().equals(userId)) {
-            throw new RuntimeException("只有创建者可以删除活动");
+            throw new BusinessException("只有创建者可以删除活动");
         }
         if (entity.getStatus() == 1) {
-            throw new RuntimeException("已发布的活动不允许删除");
+            throw new BusinessException("已发布的活动不允许删除");
         }
         activityMapper.deleteById(id);
     }

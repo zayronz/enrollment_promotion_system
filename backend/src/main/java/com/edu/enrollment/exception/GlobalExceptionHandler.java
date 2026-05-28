@@ -7,6 +7,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
  * 全局异常处理器
@@ -39,6 +40,20 @@ public class GlobalExceptionHandler {
                 .orElse("参数校验失败");
         log.warn("参数校验失败: {}", message);
         return ResultVO.error(400, message);
+    }
+
+    /**
+     * 文件上传大小超限异常
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResultVO<?> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
+        long maxSize = e.getMaxUploadSize();
+        String sizeStr = maxSize >= 1024 * 1024 ?
+                String.format("%.0fMB", maxSize / 1024.0 / 1024.0) :
+                String.format("%.0fKB", maxSize / 1024.0);
+        log.warn("文件上传大小超限: 最大允许 {}，实际 {}", sizeStr, e.getMaxUploadSize());
+        return ResultVO.error(400, "文件大小超过服务器允许的最大值（" + sizeStr + "），请压缩或拆分后重新上传");
     }
 
     /**

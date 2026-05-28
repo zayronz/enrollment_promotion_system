@@ -3,6 +3,7 @@ package com.edu.enrollment.service;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.edu.enrollment.dto.ForgotPasswordDTO;
 import com.edu.enrollment.dto.PasswordChangeDTO;
 import com.edu.enrollment.dto.UserDTO;
 import com.edu.enrollment.dto.UserRegisterDTO;
@@ -160,6 +161,32 @@ public class UserService {
         }
 
         // 更新密码
+        user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+        userMapper.updateById(user);
+    }
+
+    /**
+     * 忘记密码 - 通过用户名+邮箱验证身份后重置密码
+     */
+    @Transactional
+    public void forgotPassword(ForgotPasswordDTO dto) {
+        // 通过用户名查找用户
+        UserEntity user = userMapper.findByUsername(dto.getUsername());
+        if (user == null) {
+            throw new BusinessException("用户名不存在");
+        }
+
+        // 验证邮箱是否匹配
+        if (user.getEmail() == null || !user.getEmail().equals(dto.getEmail())) {
+            throw new BusinessException("邮箱验证失败，请检查后重试");
+        }
+
+        // 检查用户状态
+        if (user.getStatus() != 1) {
+            throw new BusinessException("该账号已被禁用，无法重置密码");
+        }
+
+        // 重置密码
         user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
         userMapper.updateById(user);
     }

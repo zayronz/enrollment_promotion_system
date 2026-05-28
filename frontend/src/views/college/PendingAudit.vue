@@ -194,7 +194,7 @@ const handleAudit = (id, result) => {
 
 const doSingleAudit = async (id, result) => {
   try {
-    await auditApi.audit({ registrationId: id, result, comment: '' })
+    await auditApi.audit({ registrationId: id, passed: result === 'APPROVED', comment: '' })
     MessagePlugin.success('操作成功')
     dialogVisible.value = false
     fetchData()
@@ -216,7 +216,7 @@ const batchAudit = (result) => {
     confirmBtn: `确定${label}`,
     onConfirm: async () => {
       try {
-        await auditApi.batchAudit({ ids: selectedIds.value, result })
+        await auditApi.batchAudit({ ids: selectedIds.value, passed: result === 'APPROVED', comment: '' })
         MessagePlugin.success(`已${label} ${selectedIds.value.length} 条报名`)
         selectedIds.value = []
         fetchData()

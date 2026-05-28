@@ -8,10 +8,29 @@
           </div>
           <span class="brand-title">教师端管理系统</span>
         </div>
-        <t-button variant="text" theme="default" @click="handleLogout">
-          <template #icon><LogoutIcon /></template>
-          退出登录
-        </t-button>
+        <div class="header-actions">
+          <t-dropdown trigger="click" @click="handleCommand">
+            <div class="user-trigger">
+              <t-avatar size="small">{{ userStore.realName?.charAt(0) || 'T' }}</t-avatar>
+              <span class="user-name">{{ userStore.realName || '教师' }}</span>
+              <ChevronDownIcon class="chevron" />
+            </div>
+            <t-dropdown-menu>
+              <t-dropdown-item value="home">
+                <HomeIcon class="dropdown-icon" />回到首页
+              </t-dropdown-item>
+              <t-dropdown-item value="profile">
+                <UserIcon class="dropdown-icon" />个人资料
+              </t-dropdown-item>
+              <t-dropdown-item value="password">
+                <LockOnIcon class="dropdown-icon" />修改密码
+              </t-dropdown-item>
+              <t-dropdown-item divider value="logout">
+                <LogoutIcon class="dropdown-icon" />退出登录
+              </t-dropdown-item>
+            </t-dropdown-menu>
+          </t-dropdown>
+        </div>
       </div>
     </t-header>
     <t-layout class="layout-body">
@@ -47,10 +66,16 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { UserBusinessIcon, LogoutIcon, BrowseIcon, FileIcon, ChatIcon, UserIcon } from 'tdesign-icons-vue-next'
+import { useUserStore } from '@/store/modules/user'
+import {
+  UserBusinessIcon, LogoutIcon, BrowseIcon, FileIcon, ChatIcon, UserIcon,
+  ChevronDownIcon, HomeIcon, LockOnIcon
+} from 'tdesign-icons-vue-next'
+import { DialogPlugin } from 'tdesign-vue-next'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 
 const activeMenu = ref(route.path)
 
@@ -64,9 +89,26 @@ const handleMenuChange = (value) => {
   }
 }
 
-const handleLogout = () => {
-  localStorage.clear()
-  router.push('/login')
+const handleCommand = (data) => {
+  if (data.value === 'home') {
+    router.push('/teacher/activities')
+  } else if (data.value === 'profile') {
+    router.push('/profile')
+  } else if (data.value === 'password') {
+    router.push('/profile?action=password')
+  } else if (data.value === 'logout') {
+    const dialog = DialogPlugin.confirm({
+      header: '确认退出',
+      body: '确定要退出登录吗？',
+      confirmBtn: '确定退出',
+      cancelBtn: '取消',
+      onConfirm: () => {
+        userStore.logout()
+        router.push('/login')
+        dialog.destroy()
+      }
+    })
+  }
 }
 </script>
 
@@ -112,6 +154,35 @@ const handleLogout = () => {
 }
 .brand-icon.staff {
   background: #f59e0b;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+.user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+.user-trigger:hover {
+  background: var(--td-bg-color-secondarycontainer);
+}
+.user-name {
+  font-size: 14px;
+  color: var(--td-text-color-primary);
+  font-weight: 500;
+}
+.chevron {
+  font-size: 14px;
+  color: var(--td-text-color-placeholder);
+}
+.dropdown-icon {
+  margin-right: 8px;
+  font-size: 16px;
 }
 .brand-title {
   font-size: 17px;

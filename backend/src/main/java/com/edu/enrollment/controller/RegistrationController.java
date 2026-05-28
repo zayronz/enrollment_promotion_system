@@ -44,7 +44,12 @@ public class RegistrationController {
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('COLLEGE', 'SCHOOL')")
     public ResultVO<?> pending(@CurrentUserId Long auditorId,
-                               @RequestParam(defaultValue = "college_audit") String node) {
-        return ResultVO.success(registrationService.getPendingAudit(auditorId, node));
+                               @RequestParam(defaultValue = "college_audit") String node,
+                               @RequestParam(defaultValue = "1") Integer page,
+                               @RequestParam(defaultValue = "10") Integer size,
+                               @RequestParam(required = false) String keyword,
+                               @RequestParam(required = false) Long activityId,
+                               @RequestParam(required = false) Long collegeId) {
+        return ResultVO.success(registrationService.getPendingAudit(auditorId, node, page, size, keyword, activityId, collegeId));
     }
 }

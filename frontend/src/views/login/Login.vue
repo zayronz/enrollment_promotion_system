@@ -68,6 +68,10 @@
         <t-link theme="primary" @click="$router.push('/register')">
           立即注册
         </t-link>
+        <t-divider layout="vertical" />
+        <t-link theme="default" @click="$router.push('/forgot-password')">
+          忘记密码
+        </t-link>
       </div>
 
       <div class="test-accounts">
@@ -80,7 +84,15 @@
             <code>student / 123456</code>
           </div>
           <div class="account-item">
-            <span class="account-role admin">管理</span>
+            <span class="account-role teacher">教师</span>
+            <code>teacher / 123456</code>
+          </div>
+          <div class="account-item">
+            <span class="account-role college">学院</span>
+            <code>college / 123456</code>
+          </div>
+          <div class="account-item">
+            <span class="account-role admin">学校</span>
             <code>admin / 123456</code>
           </div>
         </div>
@@ -295,6 +307,14 @@ const handleLogin = async (e) => {
 .account-role.student {
   background: #dbeafe;
   color: #1e40af;
+}
+.account-role.teacher {
+  background: #fef9c3;
+  color: #a16207;
+}
+.account-role.college {
+  background: #d1fae5;
+  color: #065f46;
 }
 .account-role.admin {
   background: #fef3c7;

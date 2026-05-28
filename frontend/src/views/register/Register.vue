@@ -6,7 +6,7 @@
           <UserAddIcon class="header-icon" />
         </div>
         <h2 class="header-title">创建账号</h2>
-        <p class="header-desc">加入武汉理工大学招生宣传报名系统</p>
+        <p class="header-desc">加入太原理工大学招生宣传报名系统</p>
       </div>
 
       <t-form :data="form" :rules="rules" ref="formRef" label-width="0" @submit="handleRegister">

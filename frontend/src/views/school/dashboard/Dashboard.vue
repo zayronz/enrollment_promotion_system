@@ -76,6 +76,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import { statsApi } from '@/api/stats'
 import { BrowseIcon, UserIcon, TimeIcon, CheckCircleIcon } from 'tdesign-icons-vue-next'
 
 const lineChartRef = ref(null)
@@ -105,15 +106,24 @@ const formatDate = (dateStr) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+const chartData = ref({ monthlyTrend: [], typeDistribution: [] })
+
 const initLineChart = () => {
   if (!lineChartRef.value) return
   lineChartInstance = echarts.init(lineChartRef.value)
+  const trend = chartData.value.monthlyTrend || []
+  const months = trend.map(t => {
+    const parts = (t.month || '').split('-')
+    return parts.length > 1 ? `${parseInt(parts[1])}月` : t.month
+  })
+  const counts = trend.map(t => t.count || 0)
+
   const option = {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
     xAxis: {
       type: 'category',
-      data: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+      data: months.length > 0 ? months : ['暂无数据'],
       axisLine: { lineStyle: { color: 'var(--td-border-level-1-color, #e8e8e8)' } },
       axisLabel: { color: 'var(--td-text-color-secondary, rgba(0,0,0,0.6))' }
     },
@@ -126,7 +136,7 @@ const initLineChart = () => {
       axisLabel: { color: 'var(--td-text-color-secondary, rgba(0,0,0,0.6))' }
     },
     series: [{
-      data: [12, 18, 22, 35, 42, 56, 68, 48, 39, 55, 70, 85],
+      data: counts.length > 0 ? counts : [0],
       type: 'line',
       smooth: true,
       lineStyle: { color: 'var(--td-brand-color, #0052d9)', width: 3 },
@@ -144,9 +154,17 @@ const initLineChart = () => {
   lineChartInstance.setOption(option)
 }
 
+const pieColors = ['#366ef4', '#2ba471', '#e37318', '#d54941', '#8b5cf6', '#06b6d4']
+
 const initPieChart = () => {
   if (!pieChartRef.value) return
   pieChartInstance = echarts.init(pieChartRef.value)
+  const distribution = (chartData.value.typeDistribution || []).map((item, idx) => ({
+    value: item.value || 0,
+    name: item.name || '未知',
+    itemStyle: { color: pieColors[idx % pieColors.length] }
+  }))
+
   const option = {
     tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
     legend: { orient: 'vertical', right: '5%', top: 'center', itemWidth: 10, itemHeight: 10 },
@@ -156,12 +174,7 @@ const initPieChart = () => {
       center: ['38%', '50%'],
       label: { show: false },
       emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
-      data: [
-        { value: 8, name: '线下招生', itemStyle: { color: '#366ef4' } },
-        { value: 5, name: '线上宣讲', itemStyle: { color: '#2ba471' } },
-        { value: 4, name: '校园开放日', itemStyle: { color: '#e37318' } },
-        { value: 3, name: '校外活动', itemStyle: { color: '#d54941' } }
-      ]
+      data: distribution.length > 0 ? distribution : [{ value: 1, name: '暂无数据', itemStyle: { color: '#ccc' } }]
     }]
   }
   pieChartInstance.setOption(option)
@@ -172,25 +185,33 @@ const handleResize = () => {
   pieChartInstance?.resize()
 }
 
-onMounted(async () => {
-  stats.value = {
-    totalActivities: 20,
-    totalRegistrations: 550,
-    pendingAudit: 8,
-    passedCount: 120
+const fetchStats = async () => {
+  try {
+    const res = await statsApi.getDashboard()
+    if (res.code === 200 && res.data) {
+      const data = res.data
+      stats.value = {
+        totalActivities: data.totalActivities || 0,
+        totalRegistrations: data.totalRegistrations || 0,
+        pendingAudit: data.pendingAudit || 0,
+        passedCount: data.passedCount || 0
+      }
+      chartData.value = {
+        monthlyTrend: data.monthlyTrend || [],
+        typeDistribution: data.typeDistribution || []
+      }
+      recentActivities.value = data.recentActivities || []
+      await nextTick()
+      initLineChart()
+      initPieChart()
+    }
+  } catch (err) {
+    console.error('获取仪表盘数据失败', err)
   }
+}
 
-  recentActivities.value = [
-    { id: 1, name: '2024年寒假招生宣传', activityStartTime: '2024-12-20', status: 1, registrationCount: 45 },
-    { id: 2, name: '校园开放日志愿者招募', activityStartTime: '2024-11-15', status: 1, registrationCount: 32 },
-    { id: 3, name: '优秀学子母校行', activityStartTime: '2025-01-10', status: 0, registrationCount: 0 },
-    { id: 4, name: '春季招生线上宣讲', activityStartTime: '2025-02-20', status: 1, registrationCount: 67 },
-    { id: 5, name: '毕业生经验分享会', activityStartTime: '2025-03-05', status: 1, registrationCount: 28 }
-  ]
-
-  await nextTick()
-  initLineChart()
-  initPieChart()
+onMounted(async () => {
+  await fetchStats()
   window.addEventListener('resize', handleResize)
 })
 

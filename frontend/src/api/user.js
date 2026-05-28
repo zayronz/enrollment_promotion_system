@@ -39,5 +39,10 @@ export const userApi = {
     // 修改密码
     changePassword(data) {
         return request.put('/user/password', data)
+    },
+
+    // 忘记密码
+    forgotPassword(data) {
+        return request.post('/user/forgot-password', data)
     }
 }
