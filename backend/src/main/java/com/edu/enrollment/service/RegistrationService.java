@@ -113,11 +113,40 @@ public class RegistrationService {
         }
     }
 
-    public List<RegistrationEntity> getMyRegistrations(Long userId) {
+    public Map<String, Object> getMyRegistrations(Long userId, Integer page, Integer size) {
         LambdaQueryWrapper<RegistrationEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(RegistrationEntity::getUserId, userId);
         wrapper.orderByDesc(RegistrationEntity::getCreateTime);
-        return registrationMapper.selectList(wrapper);
+
+        Page<RegistrationEntity> registrationPage = new Page<>(page, size);
+        registrationPage = registrationMapper.selectPage(registrationPage, wrapper);
+
+        // 附加活动名称
+        List<Map<String, Object>> enrichedRecords = registrationPage.getRecords().stream()
+                .map(reg -> {
+                    Map<String, Object> map = new HashMap<>();
+                    ActivityEntity activity = activityService.getById(reg.getActivityId());
+                    map.put("id", reg.getId());
+                    map.put("activityId", reg.getActivityId());
+                    map.put("activityTitle", activity != null ? activity.getName() : "-");
+                    map.put("targetSchool", reg.getTargetSchool());
+                    map.put("score", reg.getScore());
+                    map.put("status", reg.getStatus());
+                    map.put("currentNode", reg.getCurrentNode());
+                    map.put("createTime", reg.getCreateTime());
+                    map.put("groupName", reg.getGroupName());
+                    map.put("groupRank", reg.getGroupRank());
+                    map.put("rejectReason", reg.getRejectReason());
+                    return map;
+                })
+                .collect(Collectors.toList());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("records", enrichedRecords);
+        result.put("total", registrationPage.getTotal());
+        result.put("current", page);
+        result.put("size", size);
+        return result;
     }
 
     public RegistrationEntity getDetail(Long id) {

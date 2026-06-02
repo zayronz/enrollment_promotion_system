@@ -60,8 +60,8 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
-import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next'
+import { ref, watch, onMounted, nextTick } from 'vue'
+import { MessagePlugin } from 'tdesign-vue-next'
 
 const props = defineProps({
   modelValue: {
@@ -72,26 +72,17 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 const editorRef = ref(null)
+const isInternalUpdate = ref(false)
 
 const execCommand = (command) => {
-  document.execCommand(command, false, null)
   editorRef.value?.focus()
+  document.execCommand(command, false, null)
 }
 
 const insertImage = () => {
-  const dialog = DialogPlugin({
-    header: '插入图片',
-    body: '请输入图片URL',
-    confirmBtn: '确定',
-    cancelBtn: '取消',
-    onConfirm: ({ e }) => {
-      // 使用 prompt 方式更合适
-      dialog.destroy()
-    }
-  })
-  // 使用 MessagePlugin 的简单 prompt 替代方案
   const url = prompt('请输入图片URL')
-  if (url && /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(url)) {
+  if (url && /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url)) {
+    editorRef.value?.focus()
     document.execCommand('insertImage', false, url)
   } else if (url) {
     MessagePlugin.warning('请输入正确的图片URL')
@@ -100,19 +91,30 @@ const insertImage = () => {
 
 const insertLink = () => {
   const url = prompt('请输入链接地址')
-  if (url) {
+  if (url && /^https?:\/\//.test(url)) {
     const selection = window.getSelection()
-    const selectedText = selection ? selection.toString() : ''
+    const selectedText = selection ? selection.toString().trim() : ''
+    editorRef.value?.focus()
     if (selectedText) {
       document.execCommand('createLink', false, url)
     } else {
       document.execCommand('insertHTML', false, `<a href="${url}" target="_blank">${url}</a>`)
     }
+  } else if (url) {
+    MessagePlugin.warning('请输入正确的链接地址（以 http:// 或 https:// 开头）')
   }
 }
 
 const onInput = () => {
   if (editorRef.value) {
+    const html = editorRef.value.innerHTML
+    // 清理空白内容（如空 <br> 标签）
+    const cleaned = html.replace(/^<br\s*\/?>/i, '')
+    if (cleaned !== html) {
+      isInternalUpdate.value = true
+      editorRef.value.innerHTML = cleaned
+      isInternalUpdate.value = false
+    }
     emit('update:modelValue', editorRef.value.innerHTML)
   }
 }
@@ -120,19 +122,25 @@ const onInput = () => {
 const onPaste = (e) => {
   e.preventDefault()
   const text = e.clipboardData.getData('text/plain')
-  document.execCommand('insertText', false, text)
+  if (text) {
+    document.execCommand('insertText', false, text)
+  }
 }
 
 watch(() => props.modelValue, (newVal) => {
-  if (editorRef.value && newVal !== editorRef.value.innerHTML) {
-    editorRef.value.innerHTML = newVal
+  if (!editorRef.value) return
+  if (isInternalUpdate.value) return
+  if (newVal !== editorRef.value.innerHTML) {
+    editorRef.value.innerHTML = newVal || ''
   }
 })
 
 onMounted(() => {
-  if (editorRef.value) {
-    editorRef.value.innerHTML = props.modelValue
-  }
+  nextTick(() => {
+    if (editorRef.value) {
+      editorRef.value.innerHTML = props.modelValue || ''
+    }
+  })
 })
 </script>
 
@@ -155,6 +163,11 @@ onMounted(() => {
   padding: 12px;
   outline: none;
   line-height: 1.6;
+}
+.editor-content:empty::before {
+  content: '请输入活动介绍...';
+  color: #c0c4cc;
+  pointer-events: none;
 }
 .editor-content :deep(img) {
   max-width: 100%;

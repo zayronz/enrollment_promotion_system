@@ -8,10 +8,13 @@ import com.edu.enrollment.dto.PasswordChangeDTO;
 import com.edu.enrollment.dto.UserDTO;
 import com.edu.enrollment.dto.UserRegisterDTO;
 import com.edu.enrollment.dto.UserUpdateDTO;
+import com.edu.enrollment.entity.CollegeEntity;
 import com.edu.enrollment.entity.UserEntity;
 import com.edu.enrollment.exception.BusinessException;
+import com.edu.enrollment.mapper.CollegeMapper;
 import com.edu.enrollment.mapper.UserMapper;
 import com.edu.enrollment.utils.JwtUtil;
+import com.edu.enrollment.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,7 @@ import java.util.List;
 public class UserService {
 
     private final UserMapper userMapper;
+    private final CollegeMapper collegeMapper;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
@@ -40,6 +44,47 @@ public class UserService {
 
     public UserEntity getById(Long id) {
         return userMapper.selectById(id);
+    }
+
+    /**
+     * 获取用户信息（含学院名称和头像）
+     */
+    public UserVO getUserInfo(Long id) {
+        UserEntity user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        UserVO vo = new UserVO();
+        vo.setId(user.getId());
+        vo.setUsername(user.getUsername());
+        vo.setRealName(user.getRealName());
+        vo.setEmail(user.getEmail());
+        vo.setPhone(user.getPhone());
+        vo.setRole(user.getRole());
+        vo.setCollegeId(user.getCollegeId());
+        vo.setGrade(user.getGrade());
+        vo.setGpa(user.getGpa());
+        vo.setStatus(user.getStatus());
+        vo.setAvatar(user.getAvatar());
+        vo.setCreateTime(user.getCreateTime());
+        // 查询学院名称
+        if (user.getCollegeId() != null) {
+            CollegeEntity college = collegeMapper.selectById(user.getCollegeId());
+            if (college != null) {
+                vo.setCollegeName(college.getName());
+            }
+        }
+        return vo;
+    }
+
+    @Transactional
+    public void updateAvatar(Long userId, String avatarUrl) {
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        user.setAvatar(avatarUrl);
+        userMapper.updateById(user);
     }
 
     /**

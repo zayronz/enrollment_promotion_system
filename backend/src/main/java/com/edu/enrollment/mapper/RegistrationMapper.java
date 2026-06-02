@@ -20,7 +20,8 @@ public interface RegistrationMapper extends BaseMapper<RegistrationEntity> {
     List<RegistrationEntity> findByActivityAndSchool(@Param("activityId") Long activityId,
                                                      @Param("school") String school);
 
-    @Update("UPDATE registration SET group_name = #{groupName}, group_rank = #{groupRank} WHERE id = #{id}")
+    @Update("UPDATE registration SET group_name = #{groupName}, " +
+            "group_rank = #{groupRank} WHERE id = #{id}")
     void updateGroupInfo(@Param("id") Long id,
                          @Param("groupName") String groupName,
                          @Param("groupRank") Integer groupRank);

@@ -41,6 +41,15 @@ export const userApi = {
         return request.put('/user/password', data)
     },
 
+    // 更新头像
+    updateAvatar(avatarUrl) {
+        return request({
+            method: 'put',
+            url: '/user/avatar',
+            params: { avatarUrl }
+        })
+    },
+
     // 忘记密码
     forgotPassword(data) {
         return request.post('/user/forgot-password', data)

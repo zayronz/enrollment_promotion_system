@@ -44,8 +44,6 @@ public class ActivityService {
         // 非管理员只能看到已发布的活动
         if (!"SCHOOL".equals(currentUser.getRole())) {
             wrapper.eq(ActivityEntity::getStatus, 1);
-            wrapper.le(ActivityEntity::getRegistrationStartTime, LocalDateTime.now());
-            wrapper.ge(ActivityEntity::getRegistrationEndTime, LocalDateTime.now());
         }
 
         wrapper.orderByDesc(ActivityEntity::getCreateTime);
@@ -119,10 +117,7 @@ public class ActivityService {
         if (!entity.getCreatorId().equals(userId)) {
             throw new BusinessException("只有创建者可以编辑活动");
         }
-        // 已发布的活动不允许大幅修改
-        if (entity.getStatus() == 1) {
-            throw new BusinessException("已发布的活动不允许修改，请先下线");
-        }
+        // 已发布的活动允许修改
 
         entity.setName(dto.getName());
         entity.setDescription(dto.getDescription());
@@ -181,7 +176,7 @@ public class ActivityService {
         vo.setStatus(entity.getStatus());
         // 处理可能为 null 的 JSON 字段
         vo.setAuditFlow(StrUtil.isNotBlank(entity.getAuditFlow())
-                ? JSONUtil.parseObj(entity.getAuditFlow()) : null);
+                ? JSONUtil.toList(entity.getAuditFlow(), String.class) : null);
         vo.setCustomFields(StrUtil.isNotBlank(entity.getCustomFields())
                 ? JSONUtil.parseArray(entity.getCustomFields()) : null);
         vo.setMaxStudentPerSchool(entity.getMaxStudentPerSchool());

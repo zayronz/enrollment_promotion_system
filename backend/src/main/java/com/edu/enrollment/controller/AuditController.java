@@ -1,6 +1,5 @@
 package com.edu.enrollment.controller;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.edu.enrollment.dto.AuditRequestDTO;
 import com.edu.enrollment.dto.BatchAuditDTO;
 import com.edu.enrollment.security.CurrentUserId;
@@ -11,7 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/audit")
@@ -34,16 +33,5 @@ public class AuditController {
                                   @CurrentUserId Long auditorId) {
         auditService.batchAudit(dto.getRegistrationIds(), dto.getPassed(), dto.getComment(), auditorId);
         return ResultVO.success();
-    }
-
-    @GetMapping("/history")
-    @PreAuthorize("hasAnyRole('COLLEGE', 'SCHOOL')")
-    public ResultVO<Page<Map<String, Object>>> getHistory(
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer size,
-            @RequestParam(required = false) Long activityId,
-            @RequestParam(required = false) String result) {
-        Page<Map<String, Object>> history = auditService.getAuditHistory(page, size, activityId, result, null);
-        return ResultVO.success(history);
     }
 }

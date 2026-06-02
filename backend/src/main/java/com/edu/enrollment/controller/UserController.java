@@ -30,7 +30,7 @@ public class UserController {
 
     @GetMapping("/info")
     public ResultVO<?> info(@CurrentUserId Long userId) {
-        return ResultVO.success(userService.getById(userId));
+        return ResultVO.success(userService.getUserInfo(userId));
     }
 
     @GetMapping("/list")
@@ -64,6 +64,13 @@ public class UserController {
     public ResultVO<?> changePassword(@Valid @RequestBody PasswordChangeDTO dto,
                                       @CurrentUserId Long userId) {
         userService.changePassword(userId, dto);
+        return ResultVO.success();
+    }
+
+    @PutMapping("/avatar")
+    public ResultVO<?> updateAvatar(@RequestParam String avatarUrl,
+                                    @CurrentUserId Long userId) {
+        userService.updateAvatar(userId, avatarUrl);
         return ResultVO.success();
     }
 

@@ -21,8 +21,8 @@
         @change="handleSearch"
       >
         <t-option value="" label="全部类型" />
-        <t-option value="ONLINE" label="线上活动" />
-        <t-option value="OFFLINE" label="线下活动" />
+        <t-option :value="0" label="线上活动" />
+        <t-option :value="1" label="线下活动" />
       </t-select>
     </div>
 
@@ -88,12 +88,12 @@
             </div>
           </template>
           <template #header>
-            <div class="card-title">{{ activity.title }}</div>
+            <div class="card-title">{{ activity.name }}</div>
           </template>
           <div class="card-meta">
             <div class="meta-item">
               <TimeIcon class="meta-icon" />
-              <span>{{ formatDate(activity.startTime) }} — {{ formatDate(activity.endTime) }}</span>
+              <span>{{ formatDate(activity.activityStartTime) }} — {{ formatDate(activity.activityEndTime) }}</span>
             </div>
             <div class="meta-item" v-if="activity.location">
               <LocationIcon class="meta-icon" />
@@ -102,7 +102,7 @@
           </div>
           <template #footer>
             <div class="card-footer-row">
-              <t-tag variant="outline" size="small">{{ activity.type === 'ONLINE' ? '线上' : '线下' }}</t-tag>
+              <t-tag variant="outline" size="small">{{ activity.type === 0 ? '线上' : '线下' }}</t-tag>
               <t-button variant="text" theme="primary" size="small">
                 查看详情 <ChevronRightIcon />
               </t-button>
@@ -152,12 +152,12 @@
             </div>
           </template>
           <template #header>
-            <div class="card-title">{{ activity.title }}</div>
+            <div class="card-title">{{ activity.name }}</div>
           </template>
           <div class="card-meta">
             <div class="meta-item">
               <TimeIcon class="meta-icon" />
-              <span>{{ formatDate(activity.startTime) }} — {{ formatDate(activity.endTime) }}</span>
+              <span>{{ formatDate(activity.activityStartTime) }} — {{ formatDate(activity.activityEndTime) }}</span>
             </div>
             <div class="meta-item" v-if="activity.location">
               <LocationIcon class="meta-icon" />
@@ -166,7 +166,7 @@
           </div>
           <template #footer>
             <div class="card-footer-row">
-              <t-tag variant="outline" size="small">{{ activity.type === 'ONLINE' ? '线上' : '线下' }}</t-tag>
+              <t-tag variant="outline" size="small">{{ activity.type === 0 ? '线上' : '线下' }}</t-tag>
               <t-button variant="text" theme="primary" size="small">
                 查看详情 <ChevronRightIcon />
               </t-button>
@@ -220,10 +220,10 @@ const activities = ref([])
 const banners = ref([])
 
 const onlineActivities = computed(() =>
-  activities.value.filter((a) => a.type === 'ONLINE')
+  activities.value.filter((a) => a.type === 0)
 )
 const offlineActivities = computed(() =>
-  activities.value.filter((a) => a.type === 'OFFLINE')
+  activities.value.filter((a) => a.type === 1)
 )
 
 const fetchActivities = async () => {
@@ -240,12 +240,12 @@ const fetchActivities = async () => {
     total.value = res.data?.total || 0
     // Fetch banners
     const bannerRes = await activityApi.getActivityList({ page: 1, size: 5 })
-    banners.value = (bannerRes.data?.records || []).filter(a => a.bannerImage)
+    banners.value = (bannerRes.data?.records || []).filter(a => a.bannerUrl)
       .map(a => ({
         activityId: a.id,
-        title: a.title,
+        title: a.name,
         description: a.description || '',
-        imageUrl: a.bannerImage
+        imageUrl: a.bannerUrl
       }))
   } catch (err) {
     console.error('获取活动列表失败', err)
@@ -281,13 +281,13 @@ const formatDate = (dateStr) => {
 }
 
 const getStatusTheme = (status) => {
-  const map = { UPCOMING: 'warning', ENROLLING: 'success', ENDED: 'default' }
+  const map = { 0: 'default', 1: 'success', 2: 'warning' }
   return map[status] || 'default'
 }
 
 const getStatusLabel = (status) => {
-  const map = { UPCOMING: '即将开始', ENROLLING: '报名中', ENDED: '已结束' }
-  return map[status] || status
+  const map = { 0: '草稿', 1: '已发布', 2: '已结束' }
+  return map[status] || '未知'
 }
 
 onMounted(fetchActivities)

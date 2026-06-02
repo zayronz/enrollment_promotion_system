@@ -23,6 +23,11 @@ public class FeedbackController {
         return ResultVO.success(id);
     }
 
+    @GetMapping("/all")
+    public ResultVO<?> allFeedbacks() {
+        return ResultVO.success(feedbackService.getAllFeedbacks());
+    }
+
     @GetMapping("/activity/{activityId}")
     public ResultVO<?> activityFeedbacks(@PathVariable Long activityId) {
         return ResultVO.success(feedbackService.getActivityFeedbacks(activityId));

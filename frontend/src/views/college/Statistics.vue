@@ -7,25 +7,23 @@
     <!-- Stats cards -->
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-value">{{ stats.totalRegistrations }}</div>
+        <div class="stat-value">156</div>
         <div class="stat-label">总报名数</div>
-        <div class="stat-trend up">{{ stats.passedCount }} 已通过</div>
+        <div class="stat-trend up">↑ 12% 较上月</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">{{ stats.passedCount }}</div>
+        <div class="stat-value">128</div>
         <div class="stat-label">已通过</div>
-        <div class="stat-trend up">
-          通过率 {{ stats.totalRegistrations > 0 ? Math.round(stats.passedCount / stats.totalRegistrations * 100) : 0 }}%
-        </div>
+        <div class="stat-trend up">↑ 82% 通过率</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">{{ stats.pendingAudit }}</div>
+        <div class="stat-value">8</div>
         <div class="stat-label">待审核</div>
         <div class="stat-trend down">需及时处理</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">{{ stats.schoolCount }}</div>
-        <div class="stat-label">涉及学校</div>
+        <div class="stat-value">20</div>
+        <div class="stat-label">涉及高中</div>
         <div class="stat-trend">覆盖学校</div>
       </div>
     </div>
@@ -64,13 +62,13 @@
       <div class="overview-grid">
         <div class="overview-item">
           <div class="overview-label">学生</div>
-          <div class="overview-value primary">{{ stats.studentCount }} 人</div>
-          <t-progress :percentage="stats.studentPercent" theme="primary" />
+          <div class="overview-value primary">112 人</div>
+          <t-progress :percentage="72" theme="primary" />
         </div>
         <div class="overview-item">
           <div class="overview-label">教师</div>
-          <div class="overview-value warning">{{ stats.teacherCount }} 人</div>
-          <t-progress :percentage="stats.teacherPercent" theme="warning" />
+          <div class="overview-value warning">44 人</div>
+          <t-progress :percentage="28" theme="warning" />
         </div>
       </div>
     </div>
@@ -78,22 +76,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { statsApi } from '@/api/stats'
+import { ref } from 'vue'
 
-const stats = ref({
-  totalRegistrations: 0,
-  passedCount: 0,
-  pendingAudit: 0,
-  schoolCount: 0,
-  studentCount: 0,
-  teacherCount: 0,
-  studentPercent: 0,
-  teacherPercent: 0
-})
-
-const schoolStats = ref([])
-const activityStats = ref([])
+const schoolStats = ref([
+  { name: '武汉理工大学', total: 35, approved: 32, rejected: 3 },
+  { name: '华中科技大学', total: 28, approved: 25, rejected: 3 },
+  { name: '武汉大学', total: 22, approved: 18, rejected: 4 },
+  { name: '华中师范大学', total: 18, approved: 15, rejected: 3 },
+  { name: '中南财经政法大学', total: 15, approved: 12, rejected: 3 }
+])
 
 const schoolColumns = [
   { colKey: 'name', title: '学校名称', ellipsis: true },
@@ -102,36 +93,19 @@ const schoolColumns = [
   { colKey: 'rejected', title: '拒绝', width: 80 }
 ]
 
+const activityStats = ref([
+  { name: '2024年寒假招生宣传', total: 45, status: '进行中' },
+  { name: '校园开放日志愿者', total: 32, status: '进行中' },
+  { name: '优秀学子母校行', total: 28, status: '即将开始' },
+  { name: '春季招生咨询会', total: 20, status: '已结束' },
+  { name: '高校联盟展会', total: 18, status: '已结束' }
+])
+
 const activityColumns = [
   { colKey: 'name', title: '活动名称', ellipsis: true },
   { colKey: 'total', title: '报名数', width: 80 },
   { colKey: 'status', title: '状态', width: 100 }
 ]
-
-const fetchData = async () => {
-  try {
-    const res = await statsApi.getCollegeStats()
-    if (res.code === 200 && res.data) {
-      const data = res.data
-      stats.value = {
-        totalRegistrations: data.totalRegistrations || 0,
-        passedCount: data.passedCount || 0,
-        pendingAudit: data.pendingAudit || 0,
-        schoolCount: data.schoolCount || 0,
-        studentCount: data.studentCount || 0,
-        teacherCount: data.teacherCount || 0,
-        studentPercent: data.studentPercent || 0,
-        teacherPercent: data.teacherPercent || 0
-      }
-      schoolStats.value = data.schoolStats || []
-      activityStats.value = data.activityStats || []
-    }
-  } catch (err) {
-    console.error('获取统计数据失败', err)
-  }
-}
-
-onMounted(fetchData)
 </script>
 
 <style scoped>

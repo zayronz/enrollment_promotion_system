@@ -11,14 +11,11 @@
         <div class="header-actions">
           <t-dropdown trigger="click" @click="handleCommand">
             <div class="user-trigger">
-              <t-avatar size="small">{{ userStore.realName?.charAt(0) || 'U' }}</t-avatar>
+              <t-avatar size="small" :image="userStore.avatar || undefined">{{ userStore.realName?.charAt(0) || 'U' }}</t-avatar>
               <span class="user-name">{{ userStore.realName || '用户' }}</span>
               <ChevronDownIcon class="chevron" />
             </div>
             <t-dropdown-menu>
-              <t-dropdown-item value="home">
-                <HomeIcon class="dropdown-icon" />回到首页
-              </t-dropdown-item>
               <t-dropdown-item value="profile">
                 <UserIcon class="dropdown-icon" />个人资料
               </t-dropdown-item>
@@ -63,7 +60,7 @@
 import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
-import { BookOpenIcon, ChevronDownIcon, UserIcon, LockOnIcon, LogoutIcon, BrowseIcon, FileIcon, ChatIcon, HomeIcon } from 'tdesign-icons-vue-next'
+import { BookOpenIcon, ChevronDownIcon, UserIcon, LockOnIcon, LogoutIcon, BrowseIcon, FileIcon, ChatIcon } from 'tdesign-icons-vue-next'
 import { DialogPlugin } from 'tdesign-vue-next'
 
 const router = useRouter()
@@ -82,17 +79,11 @@ const handleMenuChange = (value) => {
   }
 }
 
-const goHome = () => {
-  router.push('/student/activities')
-}
-
 const handleCommand = (data) => {
-  if (data.value === 'home') {
-    goHome()
-  } else if (data.value === 'profile') {
+  if (data.value === 'profile') {
     router.push('/profile')
   } else if (data.value === 'password') {
-    router.push('/profile?action=password')
+    // TODO: 修改密码
   } else if (data.value === 'logout') {
     const dialog = DialogPlugin.confirm({
       header: '确认退出',

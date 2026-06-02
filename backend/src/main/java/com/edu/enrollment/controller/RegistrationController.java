@@ -25,8 +25,10 @@ public class RegistrationController {
     }
 
     @GetMapping("/my")
-    public ResultVO<?> my(@CurrentUserId Long userId) {
-        return ResultVO.success(registrationService.getMyRegistrations(userId));
+    public ResultVO<?> my(@CurrentUserId Long userId,
+                          @RequestParam(defaultValue = "1") Integer page,
+                          @RequestParam(defaultValue = "10") Integer size) {
+        return ResultVO.success(registrationService.getMyRegistrations(userId, page, size));
     }
 
     @GetMapping("/{id}")

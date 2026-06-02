@@ -45,6 +45,12 @@ public class FeedbackService {
         return feedback.getId();
     }
 
+    public List<FeedbackEntity> getAllFeedbacks() {
+        LambdaQueryWrapper<FeedbackEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.orderByDesc(FeedbackEntity::getCreateTime);
+        return feedbackMapper.selectList(wrapper);
+    }
+
     public List<FeedbackEntity> getActivityFeedbacks(Long activityId) {
         return feedbackMapper.selectByActivityId(activityId);
     }

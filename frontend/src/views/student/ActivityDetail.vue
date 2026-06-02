@@ -5,9 +5,9 @@
     <div v-else-if="activity" class="detail-body">
       <!-- Cover image -->
       <div
-        v-if="activity.coverImage"
+        v-if="activity.bannerUrl"
         class="cover-image"
-        :style="{ backgroundImage: `url(${activity.coverImage})` }"
+        :style="{ backgroundImage: `url(${activity.bannerUrl})` }"
       />
 
       <!-- Video -->
@@ -17,10 +17,10 @@
 
       <!-- Basic info -->
       <div class="info-card">
-        <h1 class="info-title">{{ activity.title }}</h1>
+        <h1 class="info-title">{{ activity.name }}</h1>
         <div class="info-tags">
-          <t-tag :theme="activity.type === 'ONLINE' ? 'primary' : 'warning'" variant="light">
-            {{ activity.type === 'ONLINE' ? '线上' : '线下' }}
+          <t-tag :theme="activity.type === 0 ? 'primary' : 'warning'" variant="light">
+            {{ activity.type === 0 ? '线上' : '线下' }}
           </t-tag>
           <t-tag :theme="getStatusTheme(activity.status)" variant="light">
             {{ getStatusLabel(activity.status) }}
@@ -29,7 +29,7 @@
         <div class="info-meta">
           <div class="meta-row">
             <TimeIcon class="meta-icon" />
-            <span>{{ formatFullDate(activity.startTime) }} — {{ formatFullDate(activity.endTime) }}</span>
+            <span>{{ formatFullDate(activity.activityStartTime) }} — {{ formatFullDate(activity.activityEndTime) }}</span>
           </div>
           <div class="meta-row" v-if="activity.location">
             <LocationIcon class="meta-icon" />
@@ -46,10 +46,10 @@
           <t-button
             theme="primary"
             size="large"
-            :disabled="alreadyRegistered || activity.status === 'ENDED'"
+            :disabled="alreadyRegistered || activity.status === 2"
             @click="goRegister"
           >
-            {{ alreadyRegistered ? '已报名' : activity.status === 'ENDED' ? '已结束' : '立即报名' }}
+            {{ alreadyRegistered ? '已报名' : activity.status === 2 ? '已结束' : '立即报名' }}
           </t-button>
         </div>
       </div>
@@ -87,7 +87,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { activityApi } from '@/api/activity'
 import { registrationApi } from '@/api/registeration'
-import { MessagePlugin } from 'tdesign-vue-next'
 import { TimeIcon, LocationIcon, UsergroupIcon, FileIcon } from 'tdesign-icons-vue-next'
 
 const route = useRoute()
@@ -100,26 +99,21 @@ const alreadyRegistered = ref(false)
 const canRegister = computed(() => {
   if (!activity.value) return false
   const now = Date.now()
-  if (activity.value.registerStartTime) {
-    const start = new Date(activity.value.registerStartTime).getTime()
+  if (activity.value.registrationStartTime) {
+    const start = new Date(activity.value.registrationStartTime).getTime()
     if (now < start) return false
   }
-  if (activity.value.registerEndTime) {
-    const end = new Date(activity.value.registerEndTime).getTime()
+  if (activity.value.registrationEndTime) {
+    const end = new Date(activity.value.registrationEndTime).getTime()
     if (now > end) return false
   }
   return true
 })
 
 const fetchDetail = async () => {
-  const id = route.params.id
-  if (!id) {
-    MessagePlugin.error('活动ID无效')
-    return
-  }
   loading.value = true
   try {
-    const res = await activityApi.getActivityDetail(id)
+    const res = await activityApi.getActivityDetail(route.params.id)
     activity.value = res.data
 
     // Check if already registered
@@ -147,13 +141,14 @@ const formatFullDate = (str) => {
 }
 
 const getStatusTheme = (status) => {
-  const map = { UPCOMING: 'warning', ENROLLING: 'success', ENDED: 'default' }
+  // activity status: 0=草稿, 1=已发布(报名中), 2=已结束
+  const map = { 0: 'warning', 1: 'success', 2: 'default' }
   return map[status] || 'default'
 }
 
 const getStatusLabel = (status) => {
-  const map = { UPCOMING: '即将开始', ENROLLING: '报名中', ENDED: '已结束' }
-  return map[status] || status
+  const map = { 0: '未发布', 1: '报名中', 2: '已结束' }
+  return map[status] || '未知'
 }
 
 onMounted(fetchDetail)

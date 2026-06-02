@@ -143,11 +143,13 @@ const columns = [
 const fetchData = async () => {
   loading.value = true
   try {
-    const res = await auditApi.getHistory({
+    const res = await auditApi.audit({
       page: pagination.value.current,
       size: pagination.value.pageSize,
+      keyword: keyword.value || undefined,
       activityId: activityFilter.value || undefined,
-      result: resultFilter.value || undefined
+      result: resultFilter.value || undefined,
+      history: true
     })
     records.value = res.data?.records || []
     pagination.value.total = res.data?.total || 0
@@ -163,7 +165,7 @@ const fetchActivities = async () => {
     const res = await activityApi.getActivityList({ page: 1, size: 100 })
     activityOptions.value = (res.data?.records || []).map(a => ({
       value: a.id,
-      label: a.name || a.title
+      label: a.title
     }))
   } catch (err) {
     console.error(err)

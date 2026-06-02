@@ -197,10 +197,10 @@ const fetchActivityOptions = async () => {
     ])
     const allActivities = activityRes.data?.records || []
     const approvedRegs = (regRes.data?.records || []).filter(
-      r => r.status === 'COLLEGE_APPROVED' || r.status === 'SCHOOL_APPROVED'
+      r => r.status === 1 || r.status === 2
     )
 
-    activityOptions.value = allActivities.map(a => ({ value: a.id, label: a.title }))
+    activityOptions.value = allActivities.map(a => ({ value: a.id, label: a.name }))
     approvedActivities.value = allActivities
       .filter(a => approvedRegs.some(r => r.activityId === a.id))
       .map(a => ({ value: a.id, label: a.title }))

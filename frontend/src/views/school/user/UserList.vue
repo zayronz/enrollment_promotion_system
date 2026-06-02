@@ -285,7 +285,8 @@ const handleSave = async () => {
 
 const toggleStatus = async (row, status) => {
   try {
-    await userApi.updateUser(row.id, { status })
+    // 前端使用字符串状态，后端 UserUpdateDTO.status 为 Integer，需转换为数字
+    await userApi.updateUser(row.id, { status: status === 'ACTIVE' ? 1 : 0 })
     MessagePlugin.success(status === 'ACTIVE' ? '已启用' : '已禁用')
     fetchData()
   } catch (err) {

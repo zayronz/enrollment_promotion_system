@@ -8,29 +8,10 @@
           </div>
           <span class="brand-title">院校端管理系统</span>
         </div>
-        <div class="header-actions">
-          <t-dropdown trigger="click" @click="handleCommand">
-            <div class="user-trigger">
-              <t-avatar size="small">{{ userStore.realName?.charAt(0) || 'C' }}</t-avatar>
-              <span class="user-name">{{ userStore.realName || '管理员' }}</span>
-              <ChevronDownIcon class="chevron" />
-            </div>
-            <t-dropdown-menu>
-              <t-dropdown-item value="home">
-                <HomeIcon class="dropdown-icon" />回到首页
-              </t-dropdown-item>
-              <t-dropdown-item value="profile">
-                <UserIcon class="dropdown-icon" />个人资料
-              </t-dropdown-item>
-              <t-dropdown-item value="password">
-                <LockOnIcon class="dropdown-icon" />修改密码
-              </t-dropdown-item>
-              <t-dropdown-item divider value="logout">
-                <LogoutIcon class="dropdown-icon" />退出登录
-              </t-dropdown-item>
-            </t-dropdown-menu>
-          </t-dropdown>
-        </div>
+        <t-button variant="text" theme="default" @click="handleLogout">
+          <template #icon><LogoutIcon /></template>
+          退出登录
+        </t-button>
       </div>
     </t-header>
     <t-layout class="layout-body">
@@ -66,16 +47,10 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useUserStore } from '@/store/modules/user'
-import {
-  BuildingIcon, LogoutIcon, CheckCircleIcon, TimeIcon, ChatIcon, UserIcon,
-  ChevronDownIcon, HomeIcon, LockOnIcon
-} from 'tdesign-icons-vue-next'
-import { DialogPlugin } from 'tdesign-vue-next'
+import { BuildingIcon, LogoutIcon, CheckCircleIcon, TimeIcon, ChatIcon, UserIcon } from 'tdesign-icons-vue-next'
 
 const router = useRouter()
 const route = useRoute()
-const userStore = useUserStore()
 
 const activeMenu = ref(route.path)
 
@@ -89,26 +64,9 @@ const handleMenuChange = (value) => {
   }
 }
 
-const handleCommand = (data) => {
-  if (data.value === 'home') {
-    router.push('/college/pending')
-  } else if (data.value === 'profile') {
-    router.push('/profile')
-  } else if (data.value === 'password') {
-    router.push('/profile?action=password')
-  } else if (data.value === 'logout') {
-    const dialog = DialogPlugin.confirm({
-      header: '确认退出',
-      body: '确定要退出登录吗？',
-      confirmBtn: '确定退出',
-      cancelBtn: '取消',
-      onConfirm: () => {
-        userStore.logout()
-        router.push('/login')
-        dialog.destroy()
-      }
-    })
-  }
+const handleLogout = () => {
+  localStorage.clear()
+  router.push('/login')
 }
 </script>
 
@@ -154,35 +112,6 @@ const handleCommand = (data) => {
 }
 .brand-icon.college {
   background: #10b981;
-}
-.header-actions {
-  display: flex;
-  align-items: center;
-}
-.user-trigger {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-.user-trigger:hover {
-  background: var(--td-bg-color-secondarycontainer);
-}
-.user-name {
-  font-size: 14px;
-  color: var(--td-text-color-primary);
-  font-weight: 500;
-}
-.chevron {
-  font-size: 14px;
-  color: var(--td-text-color-placeholder);
-}
-.dropdown-icon {
-  margin-right: 8px;
-  font-size: 16px;
 }
 .brand-title {
   font-size: 17px;

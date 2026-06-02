@@ -45,7 +45,7 @@ const props = defineProps({
   },
   accept: {
     type: String,
-    default: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.bmp,.mp4,.avi,.mov,.txt'
+    default: ''
   },
   listType: {
     type: String,
@@ -53,7 +53,7 @@ const props = defineProps({
   },
   tipText: {
     type: String,
-    default: '支持 PDF/Word/Excel/PPT/图片/视频，单个文件不超过10MB'
+    default: '支持图片、文档格式，单个文件不超过10MB'
   }
 })
 

@@ -218,7 +218,9 @@ const columns = [
 const fetchData = async () => {
   loading.value = true
   try {
-    const res = await feedbackApi.getActivityFeedbacks(activityFilter.value || undefined)
+    const res = activityFilter.value
+      ? await feedbackApi.getActivityFeedbacks(activityFilter.value)
+      : await feedbackApi.getAllFeedbacks()
     records.value = res.data?.records || []
     pagination.value.total = res.data?.total || 0
   } catch (err) {

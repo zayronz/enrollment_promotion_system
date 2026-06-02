@@ -216,7 +216,7 @@ const batchAudit = (result) => {
     confirmBtn: `确定${label}`,
     onConfirm: async () => {
       try {
-        await auditApi.batchAudit({ ids: selectedIds.value, passed: result === 'APPROVED', comment: '' })
+        await auditApi.batchAudit({ registrationIds: selectedIds.value, passed: result === 'APPROVED', comment: '' })
         MessagePlugin.success(`已${label} ${selectedIds.value.length} 条报名`)
         selectedIds.value = []
         fetchData()

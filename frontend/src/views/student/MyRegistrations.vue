@@ -25,7 +25,7 @@
             详情
           </t-link>
           <t-popconfirm
-            v-if="row.status === 'PENDING'"
+            v-if="row.status === 0"
             content="确定要撤销此报名吗？"
             @confirm="handleWithdraw(row.id)"
           >
@@ -183,25 +183,26 @@ const formatDateTime = (str) => {
 }
 
 const getStatusTheme = (status) => {
+  // status: 0=待审核, 1=学院通过, 2=全部通过, 3=已拒绝, 4=已撤回
   const map = {
-    PENDING: 'warning',
-    COLLEGE_APPROVED: 'primary',
-    SCHOOL_APPROVED: 'success',
-    REJECTED: 'danger',
-    WITHDRAWN: 'default'
+    0: 'warning',
+    1: 'primary',
+    2: 'success',
+    3: 'danger',
+    4: 'default'
   }
   return map[status] || 'default'
 }
 
 const getStatusLabel = (status) => {
   const map = {
-    PENDING: '待审核',
-    COLLEGE_APPROVED: '学院通过',
-    SCHOOL_APPROVED: '学校通过',
-    REJECTED: '已拒绝',
-    WITHDRAWN: '已撤回'
+    0: '待审核',
+    1: '学院通过',
+    2: '已通过',
+    3: '已拒绝',
+    4: '已撤回'
   }
-  return map[status] || status
+  return map[status] || '未知'
 }
 
 onMounted(fetchRegistrations)

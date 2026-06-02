@@ -6,9 +6,9 @@ export const registrationApi = {
         return request.post('/registration/submit', data)
     },
 
-    // 获取我的报名列表
-    getMyRegistrations() {
-        return request.get('/registration/my')
+    // 获取我的报名列表（支持分页参数）
+    getMyRegistrations(params = {}) {
+        return request.get('/registration/my', { params })
     },
 
     // 获取报名详情
@@ -21,8 +21,8 @@ export const registrationApi = {
         return request.put(`/registration/${id}/withdraw`)
     },
 
-    // 获取待审核列表
-    getPendingAudit(node) {
-        return request.get('/registration/pending', { params: { node } })
+    // 获取待审核列表（支持分页、筛选等参数）
+    getPendingAudit(params = {}) {
+        return request.get('/registration/pending', { params })
     }
 }

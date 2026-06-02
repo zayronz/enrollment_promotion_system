@@ -216,9 +216,8 @@ const loadActivity = async () => {
 }
 
 const buildSubmitData = () => {
-  const activityId = route.params.id ? Number(route.params.id) : undefined
   return {
-    id: activityId,
+    id: route.params.id,
     name: form.name,
     type: form.type,
     location: form.location,

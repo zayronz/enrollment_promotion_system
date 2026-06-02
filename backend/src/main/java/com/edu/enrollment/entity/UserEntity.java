@@ -26,4 +26,5 @@ public class UserEntity extends BaseEntity {
     private Integer grade;
     private BigDecimal gpa;
     private Integer status;
+    private String avatar;
 }

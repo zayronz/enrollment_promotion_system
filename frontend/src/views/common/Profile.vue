@@ -1,55 +1,78 @@
 <template>
   <div class="profile-page">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <h2 class="page-title">个人资料</h2>
-      <span class="page-subtitle">管理与维护您的账户信息</span>
+    <!-- 顶部渐变横幅 -->
+    <div class="profile-banner">
+      <div class="banner-overlay">
+        <div class="avatar-wrapper" @click="triggerAvatarUpload">
+          <div class="avatar-ring" :class="{ uploading: avatarUploading }">
+            <t-avatar size="96px" class="avatar-main">
+              <template v-if="avatarPreviewUrl">
+                <img :src="avatarPreviewUrl" alt="头像" class="avatar-img" />
+              </template>
+              <template v-else>
+                <span class="avatar-text">{{ userStore.realName?.charAt(0) || 'U' }}</span>
+              </template>
+            </t-avatar>
+            <div class="avatar-upload-mask">
+              <t-icon name="camera" size="22px" />
+              <span class="mask-text">更换头像</span>
+            </div>
+          </div>
+          <input
+            ref="avatarInputRef"
+            type="file"
+            accept="image/*"
+            class="avatar-file-input"
+            @change="handleAvatarUpload"
+          />
+        </div>
+        <h2 class="banner-name">{{ userStore.realName || '用户' }}</h2>
+        <div class="banner-meta">
+          <t-tag :theme="roleTheme" variant="light" size="medium" class="role-tag">{{ roleLabel }}</t-tag>
+          <span class="meta-divider">·</span>
+          <span class="meta-text" v-if="userStore.collegeName">
+            <t-icon name="building" size="14px" />
+            {{ userStore.collegeName }}
+          </span>
+          <span class="meta-text">
+            <t-icon name="user" size="14px" />
+            {{ formData.username }}
+          </span>
+        </div>
+      </div>
     </div>
 
-    <!-- 用户信息卡片 -->
+    <!-- 信息卡片网格 -->
     <div class="profile-content">
-      <!-- 左侧：头像区 -->
-      <div class="profile-sidebar">
-        <div class="avatar-section">
-          <t-avatar size="80px" class="avatar">{{ userStore.realName?.charAt(0) || 'U' }}</t-avatar>
-          <div class="avatar-name">{{ userStore.realName || '用户' }}</div>
-          <t-tag :theme="roleTheme" variant="light-outline" size="medium">{{ roleLabel }}</t-tag>
+      <!-- 基本信息卡片 -->
+      <div class="info-card">
+        <div class="card-header">
+          <t-icon name="user-circle" size="18px" class="card-icon" />
+          <span>基本信息</span>
         </div>
-        <div class="sidebar-info">
-          <div class="info-item">
-            <t-icon name="user" class="info-icon" />
-            <span class="info-label">用户名</span>
-            <span class="info-value">{{ formData.username || '--' }}</span>
+        <div class="card-body">
+          <div class="info-row">
+            <span class="info-label">邮箱地址</span>
+            <span class="info-value" :class="{ empty: !formData.email }">{{ formData.email || '未设置' }}</span>
           </div>
-          <div class="info-item">
-            <t-icon name="mail" class="info-icon" />
-            <span class="info-label">邮箱</span>
-            <span class="info-value">{{ formData.email || '未设置' }}</span>
+          <div class="info-row">
+            <span class="info-label">手机号码</span>
+            <span class="info-value" :class="{ empty: !formData.phone }">{{ formData.phone || '未设置' }}</span>
           </div>
-          <div class="info-item">
-            <t-icon name="call" class="info-icon" />
-            <span class="info-label">手机号</span>
-            <span class="info-value">{{ formData.phone || '未设置' }}</span>
+          <div class="info-row" v-if="userStore.collegeName">
+            <span class="info-label">所属学院</span>
+            <span class="info-value">{{ userStore.collegeName }}</span>
           </div>
-        </div>
-        <div class="sidebar-actions">
-          <t-button theme="primary" variant="outline" block @click="goHome">
-            <template #icon><HomeIcon /></template>
-            回到首页
-          </t-button>
-          <t-button theme="default" variant="outline" block @click="showPasswordDialog = true" style="margin-top: 10px;">
-            <template #icon><LockOnIcon /></template>
-            修改密码
-          </t-button>
         </div>
       </div>
 
-      <!-- 右侧：编辑表单 -->
-      <div class="profile-form-card">
-        <div class="form-section">
-          <div class="section-header">
-            <h3 class="section-title">编辑资料</h3>
-          </div>
+      <!-- 编辑资料卡片 -->
+      <div class="info-card edit-card">
+        <div class="card-header">
+          <t-icon name="edit" size="18px" class="card-icon" />
+          <span>编辑资料</span>
+        </div>
+        <div class="card-body">
           <t-form
             ref="formRef"
             :data="formData"
@@ -57,31 +80,59 @@
             class="profile-form"
             @submit="handleSave"
           >
-            <t-form-item label="用户名">
-              <t-input v-model="formData.username" disabled>
+            <t-form-item label="真实姓名" name="realName" :rules="[{ required: true, message: '请输入姓名' }]">
+              <t-input v-model="formData.realName" placeholder="请输入真实姓名" clearable size="large">
                 <template #prefix-icon><t-icon name="user" /></template>
               </t-input>
             </t-form-item>
-            <t-form-item label="真实姓名" name="realName" :rules="[{ required: true, message: '请输入姓名' }]">
-              <t-input v-model="formData.realName" placeholder="请输入真实姓名" clearable>
-                <template #prefix-icon><t-icon name="user-circle" /></template>
-              </t-input>
-            </t-form-item>
             <t-form-item label="邮箱地址" name="email">
-              <t-input v-model="formData.email" placeholder="请输入邮箱地址" clearable>
+              <t-input v-model="formData.email" placeholder="请输入邮箱地址" clearable size="large">
                 <template #prefix-icon><t-icon name="mail" /></template>
               </t-input>
             </t-form-item>
             <t-form-item label="手机号码" name="phone">
-              <t-input v-model="formData.phone" placeholder="请输入手机号码" clearable>
+              <t-input v-model="formData.phone" placeholder="请输入手机号码" clearable size="large">
                 <template #prefix-icon><t-icon name="call" /></template>
               </t-input>
             </t-form-item>
-            <t-form-item>
-              <t-button theme="primary" type="submit" :loading="saving">保存修改</t-button>
-              <t-button theme="default" variant="outline" style="margin-left: 12px" @click="resetForm">重置</t-button>
+            <t-form-item class="form-actions">
+              <t-button theme="primary" type="submit" :loading="saving" size="large">
+                <template #icon><t-icon name="check" /></template>
+                保存修改
+              </t-button>
+              <t-button theme="default" variant="outline" size="large" style="margin-left: 12px" @click="resetForm">
+                重置
+              </t-button>
             </t-form-item>
           </t-form>
+        </div>
+      </div>
+
+      <!-- 快捷操作卡片 -->
+      <div class="info-card action-card">
+        <div class="card-header">
+          <t-icon name="tools" size="18px" class="card-icon" />
+          <span>快捷操作</span>
+        </div>
+        <div class="card-body">
+          <div class="action-list">
+            <div class="action-item" @click="goHome">
+              <div class="action-icon"><HomeIcon /></div>
+              <div class="action-text">
+                <span class="action-title">回到首页</span>
+                <span class="action-desc">返回功能主页</span>
+              </div>
+              <t-icon name="chevron-right" size="16px" class="action-arrow" />
+            </div>
+            <div class="action-item" @click="showPasswordDialog = true">
+              <div class="action-icon"><LockOnIcon /></div>
+              <div class="action-text">
+                <span class="action-title">修改密码</span>
+                <span class="action-desc">更新登录密码</span>
+              </div>
+              <t-icon name="chevron-right" size="16px" class="action-arrow" />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -122,6 +173,8 @@ import { useUserStore } from '@/store/modules/user'
 import { userApi } from '@/api/user'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { LockOnIcon, HomeIcon } from 'tdesign-icons-vue-next'
+import axios from 'axios'
+import { getToken } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -130,6 +183,9 @@ const formRef = ref(null)
 const pwdFormRef = ref(null)
 const showPasswordDialog = ref(false)
 const saving = ref(false)
+const avatarUploading = ref(false)
+const avatarPreviewUrl = ref('')
+const avatarInputRef = ref(null)
 
 const initData = {
   username: '',
@@ -220,6 +276,59 @@ const handlePasswordChange = async () => {
   }
 }
 
+const triggerAvatarUpload = () => {
+  avatarInputRef.value?.click()
+}
+
+const handleAvatarUpload = async (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    MessagePlugin.warning('请选择图片文件')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    MessagePlugin.warning('头像图片不能超过5MB')
+    return
+  }
+
+  const localUrl = URL.createObjectURL(file)
+  avatarPreviewUrl.value = localUrl
+  avatarUploading.value = true
+
+  try {
+    const uploadData = new FormData()
+    uploadData.append('file', file)
+    const res = await axios.post('/api/file/upload', uploadData, {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`
+      }
+    })
+    if (res.data?.code === 200 && res.data?.data) {
+      const avatarUrl = res.data.data
+      // 头像URL需要拼接静态资源访问前缀
+      const fullAvatarUrl = '/api/file/view/' + avatarUrl
+      await userApi.updateAvatar(fullAvatarUrl)
+      if (userStore.userInfo) {
+        userStore.userInfo.avatar = fullAvatarUrl
+      }
+      avatarPreviewUrl.value = fullAvatarUrl
+      MessagePlugin.success('头像更新成功')
+    } else {
+      MessagePlugin.error('头像上传失败')
+      avatarPreviewUrl.value = userStore.avatar || ''
+    }
+  } catch (err) {
+    console.error('头像上传失败', err)
+    MessagePlugin.error('头像上传失败')
+    avatarPreviewUrl.value = userStore.avatar || ''
+  } finally {
+    avatarUploading.value = false
+    avatarInputRef.value.value = ''
+  }
+}
+
 const goHome = () => {
   const roleHomeMap = {
     STUDENT: '/student/activities',
@@ -233,7 +342,11 @@ const goHome = () => {
 
 onMounted(() => {
   resetForm()
-  // 如果路由带 action=password 参数，自动弹出修改密码弹窗
+  if (userStore.avatar) {
+    // 兼容旧数据（相对路径）和新数据（完整URL）
+    const av = userStore.avatar
+    avatarPreviewUrl.value = av.startsWith('/api/') ? av : '/api/file/view/' + av
+  }
   if (route.query.action === 'password') {
     showPasswordDialog.value = true
   }
@@ -242,159 +355,277 @@ onMounted(() => {
 
 <style scoped>
 .profile-page {
-  max-width: 960px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
-/* ===== 页面标题（重复性：统一标题样式） ===== */
-.page-header {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--td-text-color-primary);
-  margin: 0;
-  letter-spacing: 0.5px;
-}
-
-.page-subtitle {
-  font-size: 13px;
-  color: var(--td-text-color-placeholder);
-  letter-spacing: 0.3px;
-}
-
-/* ===== 主内容布局（对齐：左右双栏） ===== */
-.profile-content {
-  display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 24px;
-  align-items: start;
-}
-
-/* ===== 左侧：用户概览卡片 ===== */
-.profile-sidebar {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid var(--td-border-level-1-color);
+/* ===== 顶部横幅 ===== */
+.profile-banner {
+  background: linear-gradient(135deg, #0052d9 0%, #1e3a5f 100%);
+  border-radius: 16px;
   overflow: hidden;
+  margin-bottom: 24px;
+  position: relative;
 }
-
-.avatar-section {
+.profile-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0L60 30L30 60L0 30z' fill='rgba(255,255,255,0.03)'/%3E%3C/svg%3E") repeat;
+  opacity: 0.5;
+}
+.banner-overlay {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 32px 24px 24px;
+  padding: 40px 24px 32px;
   text-align: center;
 }
 
-.avatar {
-  margin-bottom: 12px;
-  flex-shrink: 0;
+/* 头像 */
+.avatar-wrapper {
+  position: relative;
+  cursor: pointer;
+  margin-bottom: 16px;
 }
-
-.avatar-name {
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--td-text-color-primary);
-  margin-bottom: 8px;
-  word-break: break-all;
+.avatar-ring {
+  position: relative;
+  padding: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  transition: background 0.3s;
 }
-
-/* 信息概览列表（重复性：统一条目样式） */
-.sidebar-info {
-  padding: 0 20px 20px;
+.avatar-ring:hover,
+.avatar-ring.uploading {
+  background: rgba(255, 255, 255, 0.45);
 }
-
-.info-item {
+.avatar-main {
   display: flex;
   align-items: center;
-  padding: 10px 12px;
-  border-radius: 8px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.avatar-main :deep(.t-avatar) {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-weight: 600;
+}
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.avatar-text {
+  font-size: 36px;
+  color: #fff;
+}
+.avatar-upload-mask {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.3s;
+  gap: 4px;
+}
+.avatar-ring:hover .avatar-upload-mask {
+  opacity: 1;
+}
+.mask-text {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+.avatar-file-input {
+  display: none;
+}
+
+/* 横幅文字 */
+.banner-name {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  letter-spacing: 0.5px;
+}
+.banner-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.role-tag {
+  font-weight: 600;
+}
+.meta-divider {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 16px;
+}
+.meta-text {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ===== 内容网格 ===== */
+.profile-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* ===== 卡片通用 ===== */
+.info-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid var(--td-border-level-1-color);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s;
+}
+.info-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.edit-card {
+  grid-row: span 2;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--td-border-level-1-color);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--td-text-color-primary);
+}
+.card-icon {
+  color: var(--td-brand-color);
+}
+.card-body {
+  padding: 20px 24px;
+}
+
+/* 信息行 */
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 10px;
   background: var(--td-bg-color-secondarycontainer);
   transition: background 0.2s;
 }
-
-.info-item + .info-item {
+.info-row + .info-row {
   margin-top: 8px;
 }
-
-.info-item:hover {
+.info-row:hover {
   background: var(--td-bg-color-container-hover);
 }
-
-.info-icon {
-  font-size: 16px;
-  color: var(--td-brand-color);
-  margin-right: 10px;
-  flex-shrink: 0;
-}
-
 .info-label {
   font-size: 13px;
   color: var(--td-text-color-placeholder);
-  min-width: 48px;
+  font-weight: 500;
 }
-
 .info-value {
   font-size: 13px;
   color: var(--td-text-color-primary);
   font-weight: 500;
-  margin-left: auto;
   text-align: right;
   word-break: break-all;
 }
-
-/* 按钮操作区 */
-.sidebar-actions {
-  padding: 0 20px 24px;
+.info-value.empty {
+  color: var(--td-text-color-placeholder);
+  font-weight: 400;
 }
 
-/* ===== 右侧：编辑表单卡片 ===== */
-.profile-form-card {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid var(--td-border-level-1-color);
-  overflow: hidden;
+/* 快捷操作 */
+.action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
-
-/* 表单分区标题（重复性：统一分区标题样式） */
-.section-header {
-  padding: 20px 24px 0;
-  margin-bottom: 8px;
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
+.action-item:hover {
+  background: var(--td-bg-color-container-hover);
+}
+.action-item:hover .action-arrow {
+  transform: translateX(3px);
+}
+.action-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--td-bg-color-secondarycontainer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--td-brand-color);
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s;
+}
+.action-item:hover .action-icon {
+  background: var(--td-brand-color-light);
+  color: var(--td-brand-color);
+}
+.action-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.action-title {
+  font-size: 14px;
+  font-weight: 500;
   color: var(--td-text-color-primary);
-  margin: 0;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--td-border-level-1-color);
+}
+.action-desc {
+  font-size: 12px;
+  color: var(--td-text-color-placeholder);
+}
+.action-arrow {
+  color: var(--td-text-color-placeholder);
+  transition: transform 0.2s;
 }
 
-/* 表单内容区 */
+/* 表单 */
 .profile-form {
-  padding: 16px 24px 24px;
+  padding: 0;
+}
+.form-actions {
+  margin-bottom: 0;
+  padding-top: 8px;
+}
+.form-actions :deep(.t-form__controls) {
+  margin-left: 0;
 }
 
-/* 统一表单项间距（亲密性：相关字段靠近） */
-:deep(.t-form__item) {
-  margin-bottom: 20px;
+::deep(.t-form__item) {
+  margin-bottom: 22px;
 }
-
-/* 输入框统一样式（重复性） */
-:deep(.t-input),
-:deep(.t-select) {
+::deep(.t-input) {
   border-radius: 8px;
 }
-
-/* ===== 对比度强化 ===== */
-:deep(.t-input.t-is-disabled) {
+::deep(.t-input.t-is-disabled) {
   background: var(--td-bg-color-secondarycontainer);
 }
 
@@ -402,34 +633,14 @@ onMounted(() => {
   .profile-content {
     grid-template-columns: 1fr;
   }
-
-  .profile-sidebar {
-    order: -1;
+  .edit-card {
+    grid-row: auto;
   }
-
-  .avatar-section {
-    padding: 24px 20px 20px;
-    flex-direction: row;
-    text-align: left;
+  .profile-banner .banner-overlay {
+    padding: 28px 20px 24px;
   }
-
-  .avatar {
-    margin-bottom: 0;
-    margin-right: 16px;
-  }
-
-  .sidebar-info {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .info-item + .info-item {
-    margin-top: 0;
-  }
-
-  .info-item {
-    padding: 8px 10px;
+  .banner-name {
+    font-size: 19px;
   }
 }
 </style>

@@ -1,10 +1,10 @@
 package com.edu.enrollment.vo;
 
 import cn.hutool.json.JSONArray;
-import cn.hutool.json.JSONObject;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class ActivityVO {
@@ -35,7 +35,7 @@ public class ActivityVO {
 
     private Integer status;  // 0-草稿 1-发布 2-已结束
 
-    private JSONObject auditFlow;  // 审批流程配置JSON
+    private List<String> auditFlow;  // 审批流程
 
     private JSONArray customFields;  // 自定义收集字段JSON
 

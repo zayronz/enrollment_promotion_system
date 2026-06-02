@@ -26,11 +26,8 @@
         class="filter-select"
         @change="fetchData"
       >
-        <t-option label="校内活动" :value="0" />
-        <t-option label="线上宣讲" :value="1" />
-        <t-option label="线下招生" :value="2" />
-        <t-option label="校园开放日" :value="3" />
-        <t-option label="校外活动" :value="4" />
+        <t-option label="线上活动" value="ONLINE" />
+        <t-option label="线下活动" value="OFFLINE" />
       </t-select>
       <t-select
         v-model="statusFilter"
@@ -39,9 +36,9 @@
         class="filter-select"
         @change="fetchData"
       >
-        <t-option label="草稿" :value="0" />
-        <t-option label="已发布" :value="1" />
-        <t-option label="已结束" :value="2" />
+        <t-option label="草稿" value="DRAFT" />
+        <t-option label="已发布" value="PUBLISHED" />
+        <t-option label="已结束" value="ENDED" />
       </t-select>
     </div>
 
@@ -56,9 +53,16 @@
       @page-change="handlePageChange"
     >
       <template #type="{ row }">
-        <t-tag :theme="row.type === 1 ? 'primary' : row.type === 2 ? 'success' : 'warning'" variant="light" size="small">
-          {{ typeMap[row.type] || '其他' }}
+        <t-tag :theme="row.type === 0 ? 'primary' : 'warning'" variant="light" size="small">
+          {{ row.type === 0 ? '线上' : '线下' }}
         </t-tag>
+      </template>
+      <template #showOnHome="{ row }">
+        <t-switch
+          :value="row.showOnHome"
+          size="small"
+          @change="(val) => toggleHomeShow(row, val)"
+        />
       </template>
       <template #status="{ row }">
         <t-tag :theme="getStatusTheme(row.status)" variant="light" size="small">
@@ -124,8 +128,9 @@ const pagination = ref({
 
 const columns = [
   { colKey: 'id', title: '编号', width: 80 },
-  { colKey: 'name', title: '活动名称', minWidth: 180, ellipsis: true },
+  { colKey: 'title', title: '活动名称', minWidth: 180, ellipsis: true },
   { colKey: 'type', title: '类型', width: 100 },
+  { colKey: 'showOnHome', title: '首页展示', width: 100 },
   { colKey: 'status', title: '状态', width: 100 },
   { colKey: 'createTime', title: '创建时间', width: 160, cell: (_, { row }) => formatDateTime(row.createTime) },
   { colKey: 'action', title: '操作', width: 220 }
@@ -184,7 +189,10 @@ const handleDelete = async (id) => {
   }
 }
 
-const typeMap = { 0: '校内活动', 1: '线上宣讲', 2: '线下招生', 3: '校园开放日', 4: '校外活动' }
+const toggleHomeShow = (row, val) => {
+  row.showOnHome = val
+  MessagePlugin.success(val ? '已设置首页展示' : '已取消首页展示')
+}
 
 const getStatusTheme = (status) => {
   const map = { 0: 'default', 1: 'success', 2: 'warning' }

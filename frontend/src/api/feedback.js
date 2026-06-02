@@ -6,6 +6,11 @@ export const feedbackApi = {
         return request.post('/feedback/submit', data)
     },
 
+    // 获取全部反馈列表
+    getAllFeedbacks() {
+        return request.get('/feedback/all')
+    },
+
     // 获取活动反馈列表
     getActivityFeedbacks(activityId) {
         return request.get(`/feedback/activity/${activityId}`)
@@ -13,6 +18,7 @@ export const feedbackApi = {
 
     // 获取我的反馈
     getMyFeedbacks(activityId) {
-        return request.get('/feedback/my', { params: { activityId } })
+        const params = activityId ? { activityId } : {}
+        return request.get('/feedback/my', { params })
     }
 }
