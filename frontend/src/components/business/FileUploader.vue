@@ -29,6 +29,7 @@
 import { ref, computed } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { getToken } from '@/utils/auth'
+import { getFileUrl } from '@/utils/file'
 
 const props = defineProps({
   modelValue: {
@@ -69,9 +70,9 @@ const fileList = ref([])
 // 初始化时同步已有的文件
 if (props.modelValue) {
   if (typeof props.modelValue === 'string') {
-    fileList.value = [{ url: props.modelValue, name: props.modelValue.split('/').pop() }]
+    fileList.value = [{ url: getFileUrl(props.modelValue), name: props.modelValue.split('/').pop() }]
   } else if (Array.isArray(props.modelValue)) {
-    fileList.value = props.modelValue.map(url => ({ url, name: url.split('/').pop() }))
+    fileList.value = props.modelValue.map(url => ({ url: getFileUrl(url), name: url.split('/').pop() }))
   }
 }
 

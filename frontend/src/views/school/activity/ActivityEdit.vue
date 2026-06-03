@@ -42,7 +42,11 @@
       </t-form-item>
 
       <t-form-item label="活动介绍" name="description">
-        <RichTextEditor v-model="form.description" />
+        <t-textarea
+          v-model="form.description"
+          placeholder="请输入活动介绍..."
+          :autosize="{ minRows: 6, maxRows: 12 }"
+        />
       </t-form-item>
 
       <!-- 媒体设置 -->
@@ -135,7 +139,6 @@ import { activityApi } from '@/api/activity'
 import { DeleteIcon, AddIcon } from 'tdesign-icons-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
 import FileUploader from '@/components/business/FileUploader.vue'
-import RichTextEditor from '@/components/business/RichTextEditor.vue'
 
 const route = useRoute()
 const router = useRouter()

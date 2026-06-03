@@ -4,6 +4,7 @@ import com.edu.enrollment.security.CurrentUserId;
 import com.edu.enrollment.service.FileService;
 import com.edu.enrollment.vo.ResultVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,10 +14,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/file")
 @RequiredArgsConstructor
@@ -45,18 +46,45 @@ public class FileController {
     @GetMapping("/view/**")
     public void view(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String requestUri = request.getRequestURI();
-        String relativePath = requestUri.replace("/api/file/view/", "");
+        String servletPath = request.getServletPath();
+        log.info("收到文件访问请求，requestUri={}, servletPath={}", requestUri, servletPath);
+
+        // 从 /api/file/view/xxx... 中提取文件路径
+        String prefix = "/api/file/view/";
+        String relativePath;
+        
+        if (requestUri.startsWith(prefix)) {
+            relativePath = requestUri.substring(prefix.length());
+        } else if (servletPath.startsWith(prefix)) {
+            relativePath = servletPath.substring(prefix.length());
+        } else {
+            // 使用更通用的提取方法
+            int idx = requestUri.indexOf("/view/");
+            if (idx != -1) {
+                relativePath = requestUri.substring(idx + 6);
+            } else {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                log.warn("无法解析文件路径，requestUri={}", requestUri);
+                return;
+            }
+        }
+
+        log.info("提取的文件路径: {}", relativePath);
 
         // 安全校验：防止路径穿越
         if (relativePath.contains("..") || relativePath.contains("//")) {
-            response.setStatus(403);
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            log.warn("路径安全检查失败，relativePath={}", relativePath);
             return;
         }
 
         String uploadPath = fileService.getUploadPath();
         File file = new File(uploadPath + relativePath);
+        log.info("文件完整路径: {}", file.getAbsolutePath());
+        
         if (!file.exists()) {
-            response.setStatus(404);
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            log.warn("文件不存在: {}", file.getAbsolutePath());
             return;
         }
 
@@ -76,5 +104,7 @@ public class FileController {
             }
             os.flush();
         }
+        
+        log.info("文件发送成功: {}", file.getAbsolutePath());
     }
 }

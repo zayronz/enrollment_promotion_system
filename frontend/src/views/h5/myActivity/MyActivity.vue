@@ -3,17 +3,26 @@
     <H5NavBar title="我的活动" />
 
     <div class="tab-bar">
-      <div class="tab-item active">
+      <div 
+        class="tab-item" 
+        :class="{ active: activeTab === 'ongoing' }"
+        @click="activeTab = 'ongoing'"
+      >
         进行中
-        <div class="tab-line"></div>
+        <div v-if="activeTab === 'ongoing'" class="tab-line"></div>
       </div>
-      <div class="tab-item">
+      <div 
+        class="tab-item" 
+        :class="{ active: activeTab === 'completed' }"
+        @click="activeTab = 'completed'"
+      >
         已完成
+        <div v-if="activeTab === 'completed'" class="tab-line"></div>
       </div>
     </div>
 
     <div class="activity-list">
-      <div v-for="item in activityList" :key="item.id" class="activity-card" @click="goDetail(item)">
+      <div v-for="item in currentList" :key="item.id" class="activity-card" @click="goDetail(item)">
         <div class="card-header">
           <div class="card-title-row">
             <span v-if="item.type === 'school'" class="school-icon">校</span>
@@ -32,17 +41,22 @@
           <span>{{ item.updateInfo }}</span>
         </div>
       </div>
+      <div v-if="currentList.length === 0" class="empty-tip">
+        暂无{{ activeTab === 'ongoing' ? '进行中' : '已完成' }}的活动
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import H5NavBar from '../components/H5NavBar.vue'
 
 const router = useRouter()
+const activeTab = ref('ongoing')
 
-const activityList = [
+const ongoingList = [
   {
     id: 1, title: '2023届招生宣传演讲', type: 'activity',
     startDate: '2023/03/29', endDate: '2023/03/29', area: '湖北省武汉市洪山区', group: '宣传组名称1',
@@ -52,13 +66,19 @@ const activityList = [
     id: 101, title: '武汉第一中学', type: 'school',
     startDate: '2023/03/29', endDate: '2023/03/29', area: '湖北省武汉市洪山区',
     updateInfo: '李明于2023/03/29 更新了活动照片'
-  },
-  {
-    id: 102, title: '武汉第一中学', type: 'school',
-    startDate: '2023/03/29', endDate: '2023/03/29', area: '湖北省武汉市洪山区',
-    updateInfo: '李明于2023/03/29 更新了活动照片'
   }
 ]
+
+const completedList = [
+  {
+    id: 102, title: '武汉第二中学', type: 'school',
+    startDate: '2022/12/15', endDate: '2022/12/15', area: '湖北省武汉市洪山区'
+  }
+]
+
+const currentList = computed(() => {
+  return activeTab.value === 'ongoing' ? ongoingList : completedList
+})
 
 const goDetail = (item) => {
   router.push(`/h5/my-activity/${item.id}`)
@@ -166,5 +186,11 @@ const goDetail = (item) => {
   border-top: 1px solid #f3f4f6;
   font-size: 12px;
   color: #9ca3af;
+}
+.empty-tip {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
 }
 </style>

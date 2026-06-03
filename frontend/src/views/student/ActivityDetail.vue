@@ -7,12 +7,12 @@
       <div
         v-if="activity.bannerUrl"
         class="cover-image"
-        :style="{ backgroundImage: `url(${activity.bannerUrl})` }"
+        :style="{ backgroundImage: `url(${getFileUrl(activity.bannerUrl)})` }"
       />
 
       <!-- Video -->
       <div v-if="activity.videoUrl" class="video-section">
-        <video :src="activity.videoUrl" controls class="detail-video" />
+        <video :src="getFileUrl(activity.videoUrl)" controls class="detail-video" />
       </div>
 
       <!-- Basic info -->
@@ -88,6 +88,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { activityApi } from '@/api/activity'
 import { registrationApi } from '@/api/registeration'
 import { TimeIcon, LocationIcon, UsergroupIcon, FileIcon } from 'tdesign-icons-vue-next'
+import { getFileUrl } from '@/utils/file'
 
 const route = useRoute()
 const router = useRouter()

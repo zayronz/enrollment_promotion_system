@@ -17,7 +17,7 @@
       <div v-if="detail" class="detail-content">
         <!-- 封面图 -->
         <div v-if="detail.coverImage" class="cover-section">
-          <img :src="detail.coverImage" :alt="detail.name" class="cover-image" />
+          <img :src="getFileUrl(detail.coverImage)" :alt="detail.name" class="cover-image" />
         </div>
 
         <!-- 活动信息 -->
@@ -53,7 +53,7 @@
           <!-- 视频 -->
           <div v-if="detail.videoUrl" class="video-section">
             <h3 class="section-title">视频介绍</h3>
-            <video :src="detail.videoUrl" controls class="video-player"></video>
+            <video :src="getFileUrl(detail.videoUrl)" controls class="video-player"></video>
           </div>
 
           <!-- 活动描述 -->
@@ -65,7 +65,7 @@
           <!-- 轮播图/Banner -->
           <div v-if="detail.bannerUrl" class="banner-section">
             <h3 class="section-title">Banner 轮播图</h3>
-            <img :src="detail.bannerUrl" :alt="detail.name" class="banner-image" />
+            <img :src="getFileUrl(detail.bannerUrl)" :alt="detail.name" class="banner-image" />
           </div>
 
           <!-- 审批流程 -->
@@ -99,6 +99,7 @@ import { useRoute } from 'vue-router'
 import { activityApi } from '@/api/activity'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { ArrowLeftIcon, EditIcon } from 'tdesign-icons-vue-next'
+import { getFileUrl } from '@/utils/file'
 
 const route = useRoute()
 const id = ref(route.params.id)

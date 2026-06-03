@@ -15,7 +15,18 @@ export const useUserStore = defineStore('user', {
         realName: (state) => state.userInfo?.realName || '',
         collegeId: (state) => state.userInfo?.collegeId || null,
         collegeName: (state) => state.userInfo?.collegeName || '',
-        avatar: (state) => state.userInfo?.avatar || ''
+        avatar: (state) => state.userInfo?.avatar || '',
+        // 获取完整的头像URL，自动处理前缀
+        avatarUrl: (state) => {
+            const avatar = state.userInfo?.avatar
+            if (!avatar) return ''
+            // 如果已经是完整URL或者已包含前缀，直接返回
+            if (avatar.startsWith('http') || avatar.startsWith('/api')) {
+                return avatar
+            }
+            // 否则添加前缀
+            return '/api/file/view/' + avatar
+        }
     },
 
     actions: {
@@ -46,6 +57,20 @@ export const useUserStore = defineStore('user', {
                 return null
             } catch (error) {
                 return null
+            }
+        },
+
+        async updateAvatar(avatarUrl) {
+            try {
+                await userApi.updateAvatar(avatarUrl)
+                if (this.userInfo) {
+                    this.userInfo.avatar = avatarUrl
+                    setUser(this.userInfo)
+                }
+                return true
+            } catch (error) {
+                console.error('更新头像失败', error)
+                return false
             }
         },
 

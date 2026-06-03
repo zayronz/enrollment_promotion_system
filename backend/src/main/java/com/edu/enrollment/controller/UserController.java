@@ -68,8 +68,9 @@ public class UserController {
     }
 
     @PutMapping("/avatar")
-    public ResultVO<?> updateAvatar(@RequestParam String avatarUrl,
+    public ResultVO<?> updateAvatar(@RequestBody java.util.Map<String, String> body,
                                     @CurrentUserId Long userId) {
+        String avatarUrl = body.get("avatarUrl");
         userService.updateAvatar(userId, avatarUrl);
         return ResultVO.success();
     }

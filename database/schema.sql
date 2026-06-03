@@ -17,6 +17,7 @@ CREATE TABLE `user` (
                         `grade` INT COMMENT '年级(学生)',
                         `gpa` DECIMAL(3,2) COMMENT '绩点(学生)',
                         `status` TINYINT DEFAULT 1 COMMENT '0-禁用 1-启用',
+                        `avatar` VARCHAR(500) COMMENT '头像URL',
                         `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
                         `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -51,6 +52,7 @@ CREATE TABLE `activity` (
                             `max_teacher_per_school` INT DEFAULT 5 COMMENT '每所学校最多教师数',
                             `auto_group` TINYINT DEFAULT 1 COMMENT '是否自动分组 0-否 1-是',
                             `creator_id` BIGINT COMMENT '创建人ID',
+                            `show_on_home` TINYINT DEFAULT 0 COMMENT '0-不展示 1-展示',
                             `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
                             `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

@@ -34,5 +34,10 @@ export const activityApi = {
     // 发布活动
     publishActivity(id) {
         return request.put(`/activity/${id}/publish`)
+    },
+
+    // 设置首页展示
+    setHomeShow(id, show) {
+        return request.put(`/activity/${id}/home-show`, null, { params: { show } })
     }
 }

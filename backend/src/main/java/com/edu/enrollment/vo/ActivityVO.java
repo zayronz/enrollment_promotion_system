@@ -54,4 +54,6 @@ public class ActivityVO {
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
+
+    private Integer showOnHome;  // 0-不展示 1-展示
 }

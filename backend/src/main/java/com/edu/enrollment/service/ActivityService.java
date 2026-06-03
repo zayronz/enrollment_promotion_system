@@ -145,13 +145,25 @@ public class ActivityService {
         if (entity == null) {
             throw new BusinessException("活动不存在");
         }
-        if (!entity.getCreatorId().equals(userId)) {
-            throw new BusinessException("只有创建者可以删除活动");
-        }
-        if (entity.getStatus() == 1) {
-            throw new BusinessException("已发布的活动不允许删除");
+        // 只有创建者或管理员可以删除活动
+        UserEntity currentUser = userService.getById(userId);
+        boolean isCreator = entity.getCreatorId().equals(userId);
+        boolean isAdmin = "SCHOOL".equals(currentUser.getRole());
+        
+        if (!isCreator && !isAdmin) {
+            throw new BusinessException("只有创建者或管理员可以删除活动");
         }
         activityMapper.deleteById(id);
+    }
+
+    @Transactional
+    public void setHomeShow(Long id, Boolean show, Long userId) {
+        ActivityEntity entity = activityMapper.selectById(id);
+        if (entity == null) {
+            throw new BusinessException("活动不存在");
+        }
+        entity.setShowOnHome(show ? 1 : 0);
+        activityMapper.updateById(entity);
     }
 
     public List<ActivityVO> getOpenActivities() {
@@ -182,6 +194,7 @@ public class ActivityService {
         vo.setMaxStudentPerSchool(entity.getMaxStudentPerSchool());
         vo.setMaxTeacherPerSchool(entity.getMaxTeacherPerSchool());
         vo.setAutoGroup(entity.getAutoGroup() == 1);
+        vo.setShowOnHome(entity.getShowOnHome() != null ? entity.getShowOnHome() : 0);
         return vo;
     }
 }

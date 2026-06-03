@@ -50,7 +50,7 @@ public class UserService {
      * 获取用户信息（含学院名称和头像）
      */
     public UserVO getUserInfo(Long id) {
-        UserEntity user = userMapper.selectById(id);
+        UserEntity user = userMapper.selectUserById(id);
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
@@ -83,8 +83,8 @@ public class UserService {
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
-        user.setAvatar(avatarUrl);
-        userMapper.updateById(user);
+        // 使用原生SQL更新头像，避免MyBatis-Plus的exist=false问题
+        userMapper.updateAvatar(userId, avatarUrl);
     }
 
     /**

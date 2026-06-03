@@ -127,8 +127,8 @@ const pagination = ref({
 })
 
 const columns = [
-  { colKey: 'id', title: '编号', width: 80 },
-  { colKey: 'title', title: '活动名称', minWidth: 180, ellipsis: true },
+  { colKey: 'rowIndex', title: '序号', width: 80, cell: (_, { row }) => getRowIndex(row) },
+  { colKey: 'name', title: '活动名称', minWidth: 180, ellipsis: true },
   { colKey: 'type', title: '类型', width: 100 },
   { colKey: 'showOnHome', title: '首页展示', width: 100 },
   { colKey: 'status', title: '状态', width: 100 },
@@ -146,7 +146,10 @@ const fetchData = async () => {
       type: typeFilter.value || undefined,
       status: statusFilter.value || undefined
     })
-    records.value = res.data?.records || []
+    records.value = (res.data?.records || []).map(item => ({
+      ...item,
+      showOnHome: item.showOnHome === 1 // 转换为布尔值
+    }))
     pagination.value.total = res.data?.total || 0
   } catch (err) {
     console.error('获取活动列表失败', err)
@@ -189,9 +192,19 @@ const handleDelete = async (id) => {
   }
 }
 
-const toggleHomeShow = (row, val) => {
-  row.showOnHome = val
-  MessagePlugin.success(val ? '已设置首页展示' : '已取消首页展示')
+const toggleHomeShow = async (row, val) => {
+  try {
+    await activityApi.setHomeShow(row.id, val)
+    row.showOnHome = val ? 1 : 0
+    MessagePlugin.success(val ? '已设置首页展示' : '已取消首页展示')
+  } catch (err) {
+    console.error('设置首页展示失败', err)
+  }
+}
+
+const getRowIndex = (row) => {
+  const index = records.value.findIndex(r => r.id === row.id)
+  return index >= 0 ? pagination.value.current * pagination.value.pageSize - pagination.value.pageSize + index + 1 : '-'
 }
 
 const getStatusTheme = (status) => {

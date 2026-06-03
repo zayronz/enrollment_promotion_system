@@ -34,4 +34,5 @@ public class ActivityEntity extends BaseEntity {
     private Integer maxTeacherPerSchool;
     private Integer autoGroup;
     private Long creatorId;
+    private Integer showOnHome;  // 0-不展示 1-展示
 }

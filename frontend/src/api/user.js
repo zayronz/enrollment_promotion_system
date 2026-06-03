@@ -46,7 +46,7 @@ export const userApi = {
         return request({
             method: 'put',
             url: '/user/avatar',
-            params: { avatarUrl }
+            data: { avatarUrl }
         })
     },
 

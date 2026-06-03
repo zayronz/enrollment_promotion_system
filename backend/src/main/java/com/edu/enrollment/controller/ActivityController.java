@@ -68,4 +68,13 @@ public class ActivityController {
         activityService.deleteActivity(id, userId);
         return ResultVO.success();
     }
+
+    @PutMapping("/{id}/home-show")
+    @PreAuthorize("hasRole('SCHOOL')")
+    public ResultVO<?> setHomeShow(@PathVariable Long id,
+                                   @RequestParam Boolean show,
+                                   @CurrentUserId Long userId) {
+        activityService.setHomeShow(id, show, userId);
+        return ResultVO.success();
+    }
 }

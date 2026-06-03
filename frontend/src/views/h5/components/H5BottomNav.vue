@@ -16,29 +16,41 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useUserStore } from '@/store/modules/user'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const currentPath = computed(() => {
   const p = route.path
   if (p.startsWith('/h5/home') || p.startsWith('/h5/activity')) return '/h5/home'
-  if (p.startsWith('/h5/more') || p.startsWith('/h5/test') || p.startsWith('/h5/my-activity') || p.startsWith('/h5/approval') || p.startsWith('/h5/team') || p.startsWith('/h5/materials')) return '/h5/more'
   return p
 })
 
-const navItems = [
-  {
-    path: '/h5/home',
-    label: '活动广场',
-    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`
-  },
-  {
-    path: '/h5/more',
-    label: '更多功能',
-    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>`
+const isStudent = computed(() => userStore.role === 'STUDENT')
+const isTeacher = computed(() => userStore.role === 'TEACHER')
+
+const navItems = computed(() => {
+  const items = [
+    {
+      path: '/h5/home',
+      label: '活动广场',
+      icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`
+    }
+  ]
+
+  // 学生端和教师端添加"更多"选项
+  if (isStudent.value || isTeacher.value) {
+    items.push({
+      path: '/h5/more',
+      label: '更多',
+      icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>`
+    })
   }
-]
+
+  return items
+})
 
 const navigate = (path) => {
   if (route.path !== path) router.push(path)

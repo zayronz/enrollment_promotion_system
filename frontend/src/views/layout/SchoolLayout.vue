@@ -11,7 +11,7 @@
         <div class="header-actions">
           <t-dropdown trigger="click" @click="handleCommand">
             <div class="user-trigger">
-              <t-avatar size="small" :image="userStore.avatar || undefined">{{ userStore.realName?.charAt(0) || 'A' }}</t-avatar>
+              <t-avatar size="small" :image="userStore.avatarUrl || undefined">{{ userStore.realName?.charAt(0) || 'A' }}</t-avatar>
               <span class="user-name">{{ userStore.realName || '管理员' }}</span>
               <ChevronDownIcon class="chevron" />
             </div>

@@ -94,6 +94,14 @@
             <t-link theme="default" hover="color" @click="$router.push('/forgot-password')">忘记密码</t-link>
           </div>
 
+          <!-- 手机版入口 -->
+          <div class="h5-entry">
+            <t-link theme="default" hover="color" @click="$router.push('/h5/login')">
+              <template #prefix-icon><MobileIcon /></template>
+              手机版登录
+            </t-link>
+          </div>
+
           <!-- 测试账号 -->
           <div class="test-accounts" :class="{ open: showTestAccounts }">
             <div class="test-header" @click="showTestAccounts = !showTestAccounts">
@@ -128,7 +136,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
-import { BookOpenIcon, UserIcon, LockOnIcon } from 'tdesign-icons-vue-next'
+import { BookOpenIcon, UserIcon, LockOnIcon, MobileIcon } from 'tdesign-icons-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
 
 const router = useRouter()
@@ -395,6 +403,23 @@ const handleLogin = async (e) => {
 }
 .link-divider {
   color: #e5e6eb;
+}
+
+/* H5 入口样式 */
+.h5-entry {
+  text-align: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #e5e6eb;
+}
+
+.h5-entry :deep(.t-link) {
+  font-size: 14px;
+  color: #8f959e;
+}
+
+.h5-entry :deep(.t-link:hover) {
+  color: #0052d9;
 }
 
 /* 测试账号 */

@@ -124,45 +124,10 @@
               </div>
               <t-icon name="chevron-right" size="16px" class="action-arrow" />
             </div>
-            <div class="action-item" @click="showPasswordDialog = true">
-              <div class="action-icon"><LockOnIcon /></div>
-              <div class="action-text">
-                <span class="action-title">修改密码</span>
-                <span class="action-desc">更新登录密码</span>
-              </div>
-              <t-icon name="chevron-right" size="16px" class="action-arrow" />
-            </div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- 密码修改弹窗 -->
-    <t-dialog
-      v-model:visible="showPasswordDialog"
-      header="修改密码"
-      width="440px"
-      :confirm-btn="{ content: '确认修改', theme: 'primary' }"
-      @confirm="handlePasswordChange"
-    >
-      <t-form ref="pwdFormRef" :data="pwdForm" label-width="90px">
-        <t-form-item name="oldPassword" label="原密码" :rules="[{ required: true, message: '请输入原密码' }]">
-          <t-input v-model="pwdForm.oldPassword" type="password" placeholder="请输入原密码" clearable>
-            <template #prefix-icon><t-icon name="lock-on" /></template>
-          </t-input>
-        </t-form-item>
-        <t-form-item name="newPassword" label="新密码" :rules="[{ required: true, message: '请输入新密码' }]">
-          <t-input v-model="pwdForm.newPassword" type="password" placeholder="请输入新密码（至少6位）" clearable>
-            <template #prefix-icon><t-icon name="lock-on" /></template>
-          </t-input>
-        </t-form-item>
-        <t-form-item name="confirmPassword" label="确认密码" :rules="[{ required: true, message: '请确认新密码' }]">
-          <t-input v-model="pwdForm.confirmPassword" type="password" placeholder="请再次输入新密码" clearable>
-            <template #prefix-icon><t-icon name="lock-on" /></template>
-          </t-input>
-        </t-form-item>
-      </t-form>
-    </t-dialog>
   </div>
 </template>
 
@@ -172,7 +137,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
 import { userApi } from '@/api/user'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { LockOnIcon, HomeIcon } from 'tdesign-icons-vue-next'
+import { HomeIcon } from 'tdesign-icons-vue-next'
 import axios from 'axios'
 import { getToken } from '@/utils/auth'
 
@@ -180,8 +145,6 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const formRef = ref(null)
-const pwdFormRef = ref(null)
-const showPasswordDialog = ref(false)
 const saving = ref(false)
 const avatarUploading = ref(false)
 const avatarPreviewUrl = ref('')
@@ -195,12 +158,6 @@ const initData = {
 }
 
 const formData = reactive({ ...initData })
-
-const pwdForm = reactive({
-  oldPassword: '',
-  newPassword: '',
-  confirmPassword: ''
-})
 
 const roleLabel = computed(() => {
   const map = { STUDENT: '学生', TEACHER: '教师', COLLEGE: '学院管理员', SCHOOL: '超级管理员' }
@@ -249,33 +206,6 @@ const handleSave = async () => {
   }
 }
 
-const handlePasswordChange = async () => {
-  const valid = await pwdFormRef.value.validate()
-  if (valid !== true) return
-
-  if (pwdForm.newPassword !== pwdForm.confirmPassword) {
-    MessagePlugin.warning('两次密码输入不一致')
-    return
-  }
-  if (pwdForm.newPassword.length < 6) {
-    MessagePlugin.warning('新密码长度不能少于6个字符')
-    return
-  }
-  try {
-    await userApi.changePassword({
-      oldPassword: pwdForm.oldPassword,
-      newPassword: pwdForm.newPassword
-    })
-    MessagePlugin.success('密码修改成功')
-    showPasswordDialog.value = false
-    pwdForm.oldPassword = ''
-    pwdForm.newPassword = ''
-    pwdForm.confirmPassword = ''
-  } catch (err) {
-    console.error('密码修改失败', err)
-  }
-}
-
 const triggerAvatarUpload = () => {
   avatarInputRef.value?.click()
 }
@@ -309,20 +239,17 @@ const handleAvatarUpload = async (e) => {
       const avatarUrl = res.data.data
       // 头像URL需要拼接静态资源访问前缀
       const fullAvatarUrl = '/api/file/view/' + avatarUrl
-      await userApi.updateAvatar(fullAvatarUrl)
-      if (userStore.userInfo) {
-        userStore.userInfo.avatar = fullAvatarUrl
-      }
+      await userStore.updateAvatar(fullAvatarUrl)
       avatarPreviewUrl.value = fullAvatarUrl
       MessagePlugin.success('头像更新成功')
     } else {
       MessagePlugin.error('头像上传失败')
-      avatarPreviewUrl.value = userStore.avatar || ''
+      avatarPreviewUrl.value = userStore.avatarUrl || ''
     }
   } catch (err) {
     console.error('头像上传失败', err)
     MessagePlugin.error('头像上传失败')
-    avatarPreviewUrl.value = userStore.avatar || ''
+    avatarPreviewUrl.value = userStore.avatarUrl || ''
   } finally {
     avatarUploading.value = false
     avatarInputRef.value.value = ''
@@ -342,13 +269,8 @@ const goHome = () => {
 
 onMounted(() => {
   resetForm()
-  if (userStore.avatar) {
-    // 兼容旧数据（相对路径）和新数据（完整URL）
-    const av = userStore.avatar
-    avatarPreviewUrl.value = av.startsWith('/api/') ? av : '/api/file/view/' + av
-  }
-  if (route.query.action === 'password') {
-    showPasswordDialog.value = true
+  if (userStore.avatarUrl) {
+    avatarPreviewUrl.value = userStore.avatarUrl
   }
 })
 </script>
