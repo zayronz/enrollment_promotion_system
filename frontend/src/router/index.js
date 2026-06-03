@@ -81,6 +81,36 @@ const routes = [
         component: () => import('@/views/common/Profile.vue'),
         meta: { requiresAuth: true }
     },
+    // ===== H5 移动端路由 =====
+    {
+        path: '/h5',
+        component: () => import('@/views/h5/components/H5Layout.vue'),
+        meta: { requiresAuth: false },
+        children: [
+            { path: '', redirect: '/h5/home' },
+            { path: 'home', name: 'H5Home', component: () => import('@/views/h5/home/Home.vue') },
+            { path: 'activity/:id', name: 'H5ActivityDetail', component: () => import('@/views/h5/activity/ActivityDetail.vue') },
+            { path: 'school-activity/:id', name: 'H5SchoolActivityDetail', component: () => import('@/views/h5/activity/SchoolActivityDetail.vue') },
+            { path: 'submit-success', name: 'H5SubmitSuccess', component: () => import('@/views/h5/activity/SubmitSuccess.vue') },
+            { path: 'more', name: 'H5More', component: () => import('@/views/h5/more/More.vue') },
+            { path: 'test', name: 'H5TestList', component: () => import('@/views/h5/test/TestList.vue') },
+            { path: 'test/start/:id', name: 'H5TestStart', component: () => import('@/views/h5/test/TestStart.vue') },
+            { path: 'test/questions/:id', name: 'H5TestQuestions', component: () => import('@/views/h5/test/TestQuestions.vue') },
+            { path: 'test/result/:id', name: 'H5TestResult', component: () => import('@/views/h5/test/TestResult.vue') },
+            { path: 'my-activity', name: 'H5MyActivity', component: () => import('@/views/h5/myActivity/MyActivity.vue') },
+            { path: 'my-activity/:id', name: 'H5MyActivityDetail', component: () => import('@/views/h5/myActivity/MyActivityDetail.vue') },
+            { path: 'add-school', name: 'H5AddSchool', component: () => import('@/views/h5/myActivity/AddSchool.vue') },
+            { path: 'add-video', name: 'H5AddVideo', component: () => import('@/views/h5/myActivity/AddVideo.vue') },
+            { path: 'add-photo', name: 'H5AddPhoto', component: () => import('@/views/h5/myActivity/AddPhoto.vue') },
+            { path: 'approval', name: 'H5ApprovalList', component: () => import('@/views/h5/approval/ApprovalList.vue') },
+            { path: 'approval/:id', name: 'H5ApprovalDetail', component: () => import('@/views/h5/approval/ApprovalDetail.vue') },
+            { path: 'team', name: 'H5MyTeam', component: () => import('@/views/h5/team/MyTeam.vue') },
+            { path: 'materials', name: 'H5Materials', component: () => import('@/views/h5/materials/Materials.vue') },
+            { path: 'search-empty', name: 'H5SearchEmpty', component: () => import('@/views/h5/home/SearchEmpty.vue') },
+            { path: 'network-error', name: 'H5NetworkError', component: () => import('@/views/h5/home/NetworkError.vue') },
+            { path: 'no-content', name: 'H5NoContent', component: () => import('@/views/h5/home/NoContent.vue') }
+        ]
+    },
     {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
