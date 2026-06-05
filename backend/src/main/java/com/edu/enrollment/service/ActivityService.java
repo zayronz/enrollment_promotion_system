@@ -46,7 +46,7 @@ public class ActivityService {
             wrapper.eq(ActivityEntity::getStatus, 1);
         }
 
-        wrapper.orderByDesc(ActivityEntity::getCreateTime);
+        wrapper.orderByDesc(ActivityEntity::getActivityStartTime);
 
         Page<ActivityEntity> entityPage = activityMapper.selectPage(new Page<>(page, size), wrapper);
 

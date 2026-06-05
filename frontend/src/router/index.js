@@ -93,7 +93,6 @@ const routes = [
         meta: { requiresAuth: false },
         children: [
             { path: '', redirect: '/h5/home' },
-            { path: 'login', name: 'H5Login', component: () => import('@/views/h5/login/H5Login.vue'), meta: { hideBottomNav: true } },
             { path: 'home', name: 'H5Home', component: () => import('@/views/h5/home/Home.vue') },
             { path: 'activity/:id', name: 'H5ActivityDetail', component: () => import('@/views/h5/activity/ActivityDetailReal.vue') },
             { path: 'school-activity/:id', name: 'H5SchoolActivityDetail', component: () => import('@/views/h5/activity/ActivityDetailReal.vue') },
@@ -154,11 +153,6 @@ router.beforeEach(async (to, from, next) => {
     const requiredRole = to.meta.role
 
     if (requiresAuth && !userStore.isLoggedIn) {
-        // H5 页面未登录跳转到 H5 登录页
-        if (to.path.startsWith('/h5')) {
-            next({ path: '/h5/login', query: { redirect: to.fullPath } })
-            return
-        }
         next('/login')
         return
     }
