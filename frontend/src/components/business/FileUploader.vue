@@ -12,9 +12,13 @@
       @fail="handleError"
       @validate="handleValidate"
     >
-      <t-button theme="primary">
+      <t-button v-if="listType === 'file'" theme="primary">
         <template #icon><t-icon name="upload" /></template>
         点击上传
+      </t-button>
+      <t-button v-else variant="outline" theme="primary">
+        <template #icon><t-icon name="upload" /></template>
+        上传图片
       </t-button>
       <template #tips>
         <div class="upload-tips">
@@ -26,7 +30,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { getToken } from '@/utils/auth'
 import { getFileUrl } from '@/utils/file'
@@ -67,27 +71,44 @@ const headers = computed(() => ({
 
 const fileList = ref([])
 
-// 初始化时同步已有的文件
-if (props.modelValue) {
-  if (typeof props.modelValue === 'string') {
-    fileList.value = [{ url: getFileUrl(props.modelValue), name: props.modelValue.split('/').pop() }]
-  } else if (Array.isArray(props.modelValue)) {
-    fileList.value = props.modelValue.map(url => ({ url: getFileUrl(url), name: url.split('/').pop() }))
+const syncFileList = () => {
+  if (props.modelValue) {
+    if (typeof props.modelValue === 'string' && props.modelValue) {
+      fileList.value = [{
+        name: props.modelValue.split('/').pop(),
+        url: getFileUrl(props.modelValue),
+        status: 'success'
+      }]
+    } else if (Array.isArray(props.modelValue) && props.modelValue.length > 0) {
+      fileList.value = props.modelValue.map(url => ({
+        name: url.split('/').pop(),
+        url: getFileUrl(url),
+        status: 'success'
+      }))
+    } else {
+      fileList.value = []
+    }
+  } else {
+    fileList.value = []
   }
 }
+
+watch(() => props.modelValue, () => {
+  syncFileList()
+}, { immediate: true, deep: true })
 
 const handleValidate = (context) => {
   const { file, type } = context
   if (type === 'FILE_OVER_SIZE_LIMIT') {
-    MessagePlugin.error('文件大小不能超过10MB，已自动过滤')
+    MessagePlugin.warning('文件大小不能超过10MB，已自动过滤')
     return false
   }
   if (type === 'FILES_OVER_LENGTH_LIMIT') {
-    MessagePlugin.error(`最多只能上传 ${props.limit} 个文件`)
+    MessagePlugin.warning(`最多只能上传 ${props.limit} 个文件`)
     return false
   }
   if (type === 'FILTER_FILE_SAME_NAME') {
-    MessagePlugin.error('不能上传同名文件')
+    MessagePlugin.warning('不能上传同名文件')
     return false
   }
   return true
@@ -95,24 +116,40 @@ const handleValidate = (context) => {
 
 const handleSuccess = (context) => {
   const { response, file } = context
+  console.log('上传成功响应:', response)
   if (response && response.code === 200 && response.data) {
     const fileUrl = response.data
+    console.log('上传文件路径:', fileUrl)
+
     if (!props.multiple) {
+      fileList.value = [{
+        name: file.name,
+        url: getFileUrl(fileUrl),
+        status: 'success'
+      }]
       emit('update:modelValue', fileUrl)
     } else {
       const currentUrls = Array.isArray(props.modelValue) ? [...props.modelValue] : []
-      currentUrls.push(fileUrl)
-      emit('update:modelValue', currentUrls)
+      if (!currentUrls.includes(fileUrl)) {
+        currentUrls.push(fileUrl)
+        fileList.value.push({
+          name: file.name,
+          url: getFileUrl(fileUrl),
+          status: 'success'
+        })
+        emit('update:modelValue', currentUrls)
+      }
     }
     emit('upload-success', fileUrl)
     MessagePlugin.success('上传成功')
   } else {
-    MessagePlugin.error('上传失败')
+    MessagePlugin.error(response?.message || '上传失败')
   }
 }
 
-const handleError = () => {
-  MessagePlugin.error('上传失败，请重试')
+const handleError = (context) => {
+  console.error('上传失败:', context)
+  MessagePlugin.error(context?.response?.message || '上传失败，请重试')
 }
 </script>
 

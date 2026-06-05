@@ -70,7 +70,7 @@
               class="card-cover"
               :style="{
                 backgroundImage: activity.coverImage
-                  ? `url(${activity.coverImage})`
+                  ? `url(${getFileUrl(activity.coverImage)})`
                   : undefined
               }"
             >
@@ -134,7 +134,7 @@
               class="card-cover"
               :style="{
                 backgroundImage: activity.coverImage
-                  ? `url(${activity.coverImage})`
+                  ? `url(${getFileUrl(activity.coverImage)})`
                   : undefined
               }"
             >
@@ -202,6 +202,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { activityApi } from '@/api/activity'
+import { getFileUrl } from '@/utils/file'
 import {
   SearchIcon, LayersIcon, TimeIcon, LocationIcon, ChevronRightIcon
 } from 'tdesign-icons-vue-next'
@@ -247,7 +248,7 @@ const fetchActivities = async () => {
         activityId: a.id,
         title: a.name,
         description: a.description || '',
-        imageUrl: a.bannerUrl
+        imageUrl: getFileUrl(a.bannerUrl)
       }))
   } catch (err) {
     console.error('获取活动列表失败', err)
