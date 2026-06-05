@@ -3,7 +3,6 @@
     <h2 class="page-title">创建活动</h2>
 
     <t-form :data="form" :rules="rules" ref="formRef" label-width="120px">
-      <!-- 基础信息 -->
       <t-divider align="left">基础信息</t-divider>
 
       <t-form-item label="活动名称" name="name">
@@ -49,7 +48,6 @@
         />
       </t-form-item>
 
-      <!-- 媒体设置 -->
       <t-divider align="left">媒体设置</t-divider>
 
       <t-form-item label="封面图">
@@ -57,14 +55,13 @@
       </t-form-item>
 
       <t-form-item label="轮播图">
-        <FileUploader v-model="form.bannerImages" :multiple="true" accept="image/*" />
+        <FileUploader v-model="form.bannerImages" :multiple="true" :limit="5" accept="image/*" />
       </t-form-item>
 
       <t-form-item label="宣传视频">
         <FileUploader v-model="form.videoUrl" :multiple="false" accept="video/*" />
       </t-form-item>
 
-      <!-- 报名设置 -->
       <t-divider align="left">报名设置</t-divider>
 
       <t-form-item label="自定义字段">
@@ -104,7 +101,6 @@
         <span class="tip">开启后，系统将按目标学校自动分组并排名</span>
       </t-form-item>
 
-      <!-- 审批流程 -->
       <t-divider align="left">审批流程</t-divider>
 
       <t-form-item label="审批流程" name="auditFlow">
@@ -161,6 +157,20 @@ const rules = {
   registrationTime: [{ required: true, message: '请选择报名时间', trigger: 'change' }]
 }
 
+const formatDate = (date) => {
+  if (!date) return ''
+  if (typeof date === 'string') return date
+  // 处理日期对象
+  const d = new Date(date)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  const seconds = String(d.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
+
 const addCustomField = () => {
   form.customFields.push({
     label: '',
@@ -176,18 +186,18 @@ const removeCustomField = (index) => {
 }
 
 const buildSubmitData = () => {
-  return {
+  const data = {
     name: form.name,
     type: form.type,
-    location: form.location,
-    activityStartTime: form.activityTime[0],
-    activityEndTime: form.activityTime[1],
-    registrationStartTime: form.registrationTime[0],
-    registrationEndTime: form.registrationTime[1],
+    location: form.type === 1 ? form.location : null,
+    activityStartTime: formatDate(form.activityTime[0]),
+    activityEndTime: formatDate(form.activityTime[1]),
+    registrationStartTime: formatDate(form.registrationTime[0]),
+    registrationEndTime: formatDate(form.registrationTime[1]),
     description: form.description,
-    coverImage: form.coverImage,
-    bannerUrl: form.bannerImages[0],
-    videoUrl: form.videoUrl,
+    coverImage: form.coverImage || null,
+    bannerUrl: form.bannerImages.length > 0 ? form.bannerImages[0] : null,
+    videoUrl: form.videoUrl || null,
     customFields: form.customFields.map(f => ({
       ...f,
       options: f.optionsStr ? f.optionsStr.split(',') : []
@@ -197,6 +207,8 @@ const buildSubmitData = () => {
     autoGroup: form.autoGroup,
     auditFlow: form.auditFlow
   }
+  console.log('构建提交数据:', data)
+  return data
 }
 
 const handleSubmit = async () => {
@@ -206,11 +218,11 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     const data = buildSubmitData()
+    console.log('提交数据:', data)
     const res = await activityApi.createActivity(data)
-    if (res.code === 200) {
-      MessagePlugin.success('保存成功')
-      router.push('/school/activity/list')
-    }
+    console.log('创建活动响应:', res)
+    MessagePlugin.success('保存成功')
+    router.push('/school/activity/list')
   } catch (error) {
     console.error('保存失败', error)
   } finally {
@@ -225,11 +237,15 @@ const handlePublish = async () => {
   publishing.value = true
   try {
     const data = buildSubmitData()
+    console.log('提交数据:', data)
     const createRes = await activityApi.createActivity(data)
-    if (createRes.code === 200 && createRes.data) {
+    console.log('创建活动响应:', createRes)
+    if (createRes.data) {
       await activityApi.publishActivity(createRes.data)
       MessagePlugin.success('发布成功')
       router.push('/school/activity/list')
+    } else {
+      MessagePlugin.error('获取活动ID失败')
     }
   } catch (error) {
     console.error('发布失败', error)
