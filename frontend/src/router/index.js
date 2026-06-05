@@ -84,7 +84,7 @@ const routes = [
     {
         path: '/h5/login',
         name: 'H5Login',
-        component: () => import('@/views/h5/Login.vue'),
+        component: () => import('@/views/h5/login/H5Login.vue'),
         meta: { requiresAuth: false }
     },
     {
@@ -152,8 +152,12 @@ router.beforeEach(async (to, from, next) => {
     const requiresAuth = to.meta.requiresAuth !== false
     const requiredRole = to.meta.role
 
+    // 判断是否为 H5 页面
+    const isH5Page = to.path.startsWith('/h5')
+
     if (requiresAuth && !userStore.isLoggedIn) {
-        next('/login')
+        // H5 页面未登录跳转到 H5 登录页
+        next(isH5Page ? '/h5/login' : '/login')
         return
     }
 

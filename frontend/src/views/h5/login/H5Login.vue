@@ -1,6 +1,6 @@
 <template>
   <div class="h5-login">
-    <!-- 顶部品牌区域 -->
+    <!-- 头部品牌区域 -->
     <div class="login-header">
       <div class="header-bg"></div>
       <div class="header-content">
@@ -12,7 +12,7 @@
               <path d="M24 32V16l10 8-10 8z" fill="rgba(255,255,255,0.6)"/>
             </svg>
           </div>
-          <h1 class="system-title" style="font-size:28px">招生宣传报名系统</h1>
+          <h1 class="system-title">招生宣传报名系统</h1>
           <p class="system-subtitle">Enrollment Promotion System</p>
         </div>
       </div>
@@ -213,12 +213,14 @@ const handleRegister = () => {
   background: #f5f7fa;
   position: relative;
   overflow-x: hidden;
+  max-width: 480px;
+  margin: 0 auto;
 }
 
 /* ===== 头部品牌区域 ===== */
 .login-header {
   position: relative;
-  height: 220px;
+  height: 200px;
 }
 .header-bg {
   position: absolute;
@@ -267,15 +269,15 @@ const handleRegister = () => {
 }
 .system-title {
   color: #fff;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 2px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 1px;
   margin: 0 0 6px;
 }
 .system-subtitle {
   color: rgba(255,255,255,0.7);
   font-size: 12px;
-  letter-spacing: 3px;
+  letter-spacing: 2px;
   text-transform: uppercase;
   margin: 0;
 }
@@ -296,24 +298,24 @@ const handleRegister = () => {
 .login-card {
   position: relative;
   z-index: 3;
-  margin: -20px 16px 0;
+  margin: -20px 12px 0;
   background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-  padding: 0 24px 28px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 0 20px 24px;
 }
 .card-tab {
   text-align: center;
-  padding: 20px 0 16px;
+  padding: 16px 0 12px;
   border-bottom: 1px solid #f0f0f0;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 .tab-item {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 500;
   color: #1f2937;
   position: relative;
-  padding-bottom: 16px;
+  padding-bottom: 12px;
 }
 .tab-item.active::after {
   content: '';
@@ -321,17 +323,17 @@ const handleRegister = () => {
   bottom: -1px;
   left: 50%;
   transform: translateX(-50%);
-  width: 32px;
+  width: 28px;
   height: 3px;
   border-radius: 2px;
-  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  background: #2563eb;
 }
 
 /* ===== 表单项 ===== */
 .form-area {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 .input-group {
   position: relative;
@@ -396,7 +398,7 @@ const handleRegister = () => {
 /* ===== 登录按钮 ===== */
 .login-btn {
   width: 100%;
-  height: 48px;
+  height: 46px;
   border: none;
   border-radius: 10px;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
@@ -409,7 +411,7 @@ const handleRegister = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 .login-btn:active:not(:disabled) {
   transform: scale(0.98);
@@ -445,13 +447,13 @@ const handleRegister = () => {
 
 /* ===== 测试账号 ===== */
 .demo-section {
-  margin: 28px 16px 0;
+  margin: 24px 12px 0;
 }
 .demo-title {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 .demo-line {
   flex: 1;
@@ -498,7 +500,7 @@ const handleRegister = () => {
 /* ===== 版权 ===== */
 .copyright {
   text-align: center;
-  padding: 24px 0 40px;
+  padding: 24px 0 32px;
   font-size: 11px;
   color: #c0c6d0;
 }
@@ -552,5 +554,31 @@ const handleRegister = () => {
 .toast-fade-leave-to {
   opacity: 0;
   transform: scale(0.85);
+}
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 375px) {
+  .login-header {
+    height: 180px;
+  }
+  .system-title {
+    font-size: 18px;
+  }
+  .login-card {
+    margin: -20px 10px 0;
+    padding: 0 16px 20px;
+  }
+  .demo-section {
+    margin: 20px 10px 0;
+  }
+}
+
+@media (min-width: 414px) {
+  .login-header {
+    height: 220px;
+  }
+  .system-title {
+    font-size: 22px;
+  }
 }
 </style>
