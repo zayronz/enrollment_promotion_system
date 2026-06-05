@@ -47,7 +47,9 @@ request.interceptors.response.use(
         if (error.response?.status === 401) {
             MessagePlugin.error('登录已过期，请重新登录')
             localStorage.removeItem('token')
-            window.location.href = '/login'
+            // H5 页面 401 跳转到 H5 登录页
+            const isH5 = window.location.pathname.startsWith('/h5')
+            window.location.href = isH5 ? '/h5/login' : '/login'
         } else if (error.response?.data?.message) {
             // 优先使用后端返回的具体错误信息
             MessagePlugin.error(error.response.data.message)

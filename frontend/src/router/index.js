@@ -9,6 +9,12 @@ const routes = [
         meta: { requiresAuth: false }
     },
     {
+        path: '/forgot-password',
+        name: 'ForgotPassword',
+        component: () => import('@/views/login/ForgotPassword.vue'),
+        meta: { requiresAuth: false }
+    },
+    {
         path: '/register',
         name: 'Register',
         component: () => import('@/views/register/Register.vue'),
@@ -74,6 +80,60 @@ const routes = [
         component: () => import('@/views/common/Profile.vue'),
         meta: { requiresAuth: true }
     },
+    // ===== H5 移动端路由 =====
+    {
+        path: '/h5/login',
+        name: 'H5Login',
+        component: () => import('@/views/h5/login/H5Login.vue'),
+        meta: { requiresAuth: false }
+    },
+    {
+        path: '/h5',
+        component: () => import('@/views/h5/components/H5Layout.vue'),
+        meta: { requiresAuth: false },
+        children: [
+            { path: '', redirect: '/h5/home' },
+            { path: 'home', name: 'H5Home', component: () => import('@/views/h5/home/Home.vue') },
+            { path: 'activity/:id', name: 'H5ActivityDetail', component: () => import('@/views/h5/activity/ActivityDetailReal.vue') },
+            { path: 'school-activity/:id', name: 'H5SchoolActivityDetail', component: () => import('@/views/h5/activity/ActivityDetailReal.vue') },
+            { path: 'register/:id', name: 'H5RegistrationForm', component: () => import('@/views/h5/activity/RegistrationForm.vue') },
+            { path: 'submit-success', name: 'H5SubmitSuccess', component: () => import('@/views/h5/activity/SubmitSuccess.vue') },
+            { path: 'more', name: 'H5More', component: () => import('@/views/h5/more/More.vue') },
+            { path: 'test', name: 'H5TestList', component: () => import('@/views/h5/test/TestList.vue') },
+            { path: 'test/start/:id', name: 'H5TestStart', component: () => import('@/views/h5/test/TestStart.vue') },
+            { path: 'test/questions/:id', name: 'H5TestQuestions', component: () => import('@/views/h5/test/TestQuestions.vue') },
+            { path: 'test/result/:id', name: 'H5TestResult', component: () => import('@/views/h5/test/TestResult.vue') },
+            { path: 'my-activity', name: 'H5MyActivity', component: () => import('@/views/h5/myActivity/MyActivity.vue') },
+            { path: 'my-activity/:id', name: 'H5MyActivityDetail', component: () => import('@/views/h5/myActivity/MyActivityDetail.vue') },
+            { path: 'add-school', name: 'H5AddSchool', component: () => import('@/views/h5/myActivity/AddSchool.vue') },
+            { path: 'add-video', name: 'H5AddVideo', component: () => import('@/views/h5/myActivity/AddVideo.vue') },
+            { path: 'add-photo', name: 'H5AddPhoto', component: () => import('@/views/h5/myActivity/AddPhoto.vue') },
+            { path: 'approval', name: 'H5ApprovalList', component: () => import('@/views/h5/approval/ApprovalList.vue') },
+            { path: 'approval/:id', name: 'H5ApprovalDetail', component: () => import('@/views/h5/approval/ApprovalDetail.vue') },
+            { path: 'team', name: 'H5MyTeam', component: () => import('@/views/h5/team/MyTeam.vue') },
+            { path: 'materials', name: 'H5Materials', component: () => import('@/views/h5/materials/Materials.vue') },
+            { path: 'my-registrations', name: 'H5MyRegistrations', component: () => import('@/views/h5/myActivity/MyRegistrations.vue') },
+            { path: 'my-feedbacks', name: 'H5MyFeedbacks', component: () => import('@/views/h5/myActivity/MyFeedbacks.vue') },
+            // 教师端 H5 路由
+            { path: 'teacher/activities', name: 'H5TeacherActivities', component: () => import('@/views/h5/teacher/Activities.vue') },
+            { path: 'teacher/my-registrations', name: 'H5TeacherMyRegistrations', component: () => import('@/views/h5/teacher/MyRegistrations.vue') },
+            // 学院端 H5 路由
+            { path: 'college/pending', name: 'H5CollegePending', component: () => import('@/views/h5/college/PendingAudit.vue') },
+            { path: 'college/history', name: 'H5CollegeHistory', component: () => import('@/views/h5/college/History.vue') },
+            { path: 'college/feedback', name: 'H5CollegeFeedback', component: () => import('@/views/h5/college/Feedback.vue') },
+            // 学校端 H5 路由
+            { path: 'school/dashboard', name: 'H5SchoolDashboard', component: () => import('@/views/h5/school/Dashboard.vue') },
+            { path: 'school/activity-list', name: 'H5SchoolActivityList', component: () => import('@/views/h5/school/ActivityList.vue') },
+            { path: 'school/audit-pending', name: 'H5SchoolAuditPending', component: () => import('@/views/h5/school/AuditPending.vue') },
+            { path: 'school/user-list', name: 'H5SchoolUserList', component: () => import('@/views/h5/school/UserList.vue') },
+            { path: 'school/feedback-list', name: 'H5SchoolFeedbackList', component: () => import('@/views/h5/school/FeedbackList.vue') },
+            // 个人中心
+            { path: 'profile', name: 'H5Profile', component: () => import('@/views/common/Profile.vue') },
+            { path: 'search-empty', name: 'H5SearchEmpty', component: () => import('@/views/h5/home/SearchEmpty.vue') },
+            { path: 'network-error', name: 'H5NetworkError', component: () => import('@/views/h5/home/NetworkError.vue') },
+            { path: 'no-content', name: 'H5NoContent', component: () => import('@/views/h5/home/NoContent.vue') }
+        ]
+    },
     {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
@@ -86,17 +146,23 @@ const router = createRouter({
     routes
 })
 
+// 路由守卫
 router.beforeEach(async (to, from, next) => {
     const userStore = useUserStore()
     const requiresAuth = to.meta.requiresAuth !== false
     const requiredRole = to.meta.role
 
+    // 判断是否为 H5 页面
+    const isH5Page = to.path.startsWith('/h5')
+
     if (requiresAuth && !userStore.isLoggedIn) {
-        next('/login')
+        // H5 页面未登录跳转到 H5 登录页
+        next(isH5Page ? '/h5/login' : '/login')
         return
     }
 
     if (requiredRole && userStore.role !== requiredRole) {
+        // 根据角色重定向
         const roleMap = {
             'STUDENT': '/',
             'TEACHER': '/teacher',
