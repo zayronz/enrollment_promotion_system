@@ -116,6 +116,16 @@
         </div>
         <div class="card-body">
           <div class="action-list">
+            <div class="action-item" @click="openPasswordDialog">
+              <div class="action-icon">
+                <t-icon name="lock-on" size="20px" />
+              </div>
+              <div class="action-text">
+                <span class="action-title">修改密码</span>
+                <span class="action-desc">更新账户登录密码</span>
+              </div>
+              <t-icon name="chevron-right" size="16px" class="action-arrow" />
+            </div>
             <div class="action-item" @click="goHome">
               <div class="action-icon"><HomeIcon /></div>
               <div class="action-text">
@@ -128,6 +138,84 @@
         </div>
       </div>
     </div>
+
+    <!-- 修改密码对话框 -->
+    <t-dialog
+      v-model:visible="passwordDialogVisible"
+      header="修改密码"
+      width="500px"
+      :confirm-btn="null"
+      :cancel-btn="null"
+    >
+      <t-form
+        ref="passwordFormRef"
+        :data="passwordForm"
+        label-width="90px"
+        class="password-form"
+        @submit="handlePasswordChange"
+      >
+        <t-form-item label="原密码" name="oldPassword" :rules="[{ required: true, message: '请输入原密码' }]">
+          <t-input
+            v-model="passwordForm.oldPassword"
+            type="password"
+            placeholder="请输入原密码"
+            clearable
+            size="large"
+          >
+            <template #prefix-icon><t-icon name="lock-on" /></template>
+          </t-input>
+        </t-form-item>
+        <t-form-item
+          label="新密码"
+          name="newPassword"
+          :rules="[
+            { required: true, message: '请输入新密码' },
+            { min: 6, message: '新密码长度不能少于6位' }
+          ]"
+        >
+          <t-input
+            v-model="passwordForm.newPassword"
+            type="password"
+            placeholder="请输入新密码（至少6位）"
+            clearable
+            size="large"
+          >
+            <template #prefix-icon><t-icon name="lock" /></template>
+          </t-input>
+        </t-form-item>
+        <t-form-item
+          label="确认密码"
+          name="confirmPassword"
+          :rules="[
+            { required: true, message: '请再次输入新密码' },
+            { 
+              validator: (val) => {
+                if (!val || !passwordForm.newPassword) return true
+                return val === passwordForm.newPassword
+              },
+              message: '两次输入的密码不一致',
+              trigger: 'blur'
+            }
+          ]"
+        >
+          <t-input
+            v-model="passwordForm.confirmPassword"
+            type="password"
+            placeholder="请再次输入新密码"
+            clearable
+            size="large"
+          >
+            <template #prefix-icon><t-icon name="lock" /></template>
+          </t-input>
+        </t-form-item>
+        <t-form-item>
+          <t-button theme="primary" type="submit" :loading="passwordChanging" size="large" style="width: 100%">
+            <template #icon><t-icon name="check" /></template>
+            确认修改
+          </t-button>
+        </t-form-item>
+      </t-form>
+    </t-dialog>
   </div>
 </template>
 
@@ -136,7 +224,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
 import { userApi } from '@/api/user'
-import { MessagePlugin } from 'tdesign-vue-next'
+import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { HomeIcon } from 'tdesign-icons-vue-next'
 import axios from 'axios'
 import { getToken } from '@/utils/auth'
@@ -149,6 +237,54 @@ const saving = ref(false)
 const avatarUploading = ref(false)
 const avatarPreviewUrl = ref('')
 const avatarInputRef = ref(null)
+
+// 修改密码相关
+const passwordDialogVisible = ref(false)
+const passwordFormRef = ref(null)
+const passwordChanging = ref(false)
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
+const openPasswordDialog = () => {
+  passwordForm.oldPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+  passwordDialogVisible.value = true
+}
+
+const handlePasswordChange = async () => {
+  const valid = await passwordFormRef.value.validate()
+  if (valid !== true) return
+
+  passwordChanging.value = true
+  try {
+    await userApi.changePassword({
+      oldPassword: passwordForm.oldPassword,
+      newPassword: passwordForm.newPassword
+    })
+    MessagePlugin.success('密码修改成功，请重新登录')
+    passwordDialogVisible.value = false
+    // 退出登录
+    const dialog = DialogPlugin.confirm({
+      header: '需要重新登录',
+      body: '密码已修改，需要重新登录',
+      confirmBtn: '去登录',
+      cancelBtn: '取消',
+      onConfirm: () => {
+        userStore.logout()
+        router.push('/login')
+        dialog.destroy()
+      }
+    })
+  } catch (err) {
+    console.error('密码修改失败', err)
+  } finally {
+    passwordChanging.value = false
+  }
+}
 
 const initData = {
   username: '',

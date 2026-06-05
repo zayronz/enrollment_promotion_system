@@ -55,7 +55,10 @@
         class="activity-card"
         @click="goDetail(item)"
       >
-        <div v-if="item.bannerUrl" class="card-cover">
+        <div v-if="item.bannerUrls && item.bannerUrls.length" class="card-cover">
+          <img :src="getFileUrl(item.bannerUrls[0])" :alt="item.name" />
+        </div>
+        <div v-else-if="item.bannerUrl" class="card-cover">
           <img :src="getFileUrl(item.bannerUrl)" :alt="item.name" />
         </div>
         <div class="card-header">

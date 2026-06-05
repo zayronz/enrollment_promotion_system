@@ -63,7 +63,15 @@
           </div>
 
           <!-- 轮播图/Banner -->
-          <div v-if="detail.bannerUrl" class="banner-section">
+          <div v-if="detail.bannerUrls && detail.bannerUrls.length" class="banner-section">
+            <h3 class="section-title">Banner 轮播图</h3>
+            <t-swiper :autoplay="true" class="banner-swiper">
+              <t-swiper-item v-for="(url, index) in detail.bannerUrls" :key="index">
+                <img :src="getFileUrl(url)" :alt="`轮播图${index + 1}`" class="banner-image" />
+              </t-swiper-item>
+            </t-swiper>
+          </div>
+          <div v-else-if="detail.bannerUrl" class="banner-section">
             <h3 class="section-title">Banner 轮播图</h3>
             <img :src="getFileUrl(detail.bannerUrl)" :alt="detail.name" class="banner-image" />
           </div>
@@ -167,7 +175,8 @@ onMounted(fetchDetail)
 
 .video-section .video-player { width: 100%; max-height: 400px; border-radius: 8px; }
 .desc-section .desc-content { line-height: 1.8; color: var(--td-text-color-secondary); }
-.banner-section .banner-image { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; }
+.banner-section .banner-swiper { border-radius: 8px; overflow: hidden; }
+.banner-section .banner-image { width: 100%; max-height: 300px; object-fit: cover; }
 
 .flow-section { margin-bottom: 24px; }
 .fields-section { margin-bottom: 24px; }

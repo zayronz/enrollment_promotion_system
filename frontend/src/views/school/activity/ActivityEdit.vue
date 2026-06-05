@@ -200,7 +200,7 @@ const loadActivity = async () => {
     form.registrationTime = [data.registerStartTime || data.registrationStartTime, data.registerEndTime || data.registrationEndTime]
     form.description = data.description || data.content || ''
     form.coverImage = data.coverImage || ''
-    form.bannerImages = data.bannerImages || []
+    form.bannerImages = data.bannerUrls || (data.bannerUrl ? [data.bannerUrl] : [])
     form.videoUrl = data.videoUrl || ''
     form.customFields = (data.customFields || []).map(f => ({
       ...f,
@@ -231,6 +231,7 @@ const buildSubmitData = () => {
     description: form.description,
     coverImage: form.coverImage,
     bannerUrl: form.bannerImages[0],
+    bannerUrls: form.bannerImages,
     videoUrl: form.videoUrl,
     customFields: form.customFields.map(f => ({
       ...f,

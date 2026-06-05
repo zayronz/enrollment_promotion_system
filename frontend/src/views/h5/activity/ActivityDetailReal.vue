@@ -5,8 +5,15 @@
     <t-loading v-if="loading" text="加载中..." size="small" class="loading-wrap" />
 
     <div v-else-if="activity" class="detail-body">
-      <!-- 封面图 -->
-      <div v-if="activity.bannerUrl" class="cover-image">
+      <!-- 轮播图 -->
+      <div v-if="activity.bannerUrls && activity.bannerUrls.length" class="cover-image">
+        <t-swiper :autoplay="true" class="banner-swiper">
+          <t-swiper-item v-for="(url, index) in activity.bannerUrls" :key="index">
+            <img :src="getFileUrl(url)" :alt="`轮播图${index + 1}`" />
+          </t-swiper-item>
+        </t-swiper>
+      </div>
+      <div v-else-if="activity.bannerUrl" class="cover-image">
         <img :src="getFileUrl(activity.bannerUrl)" :alt="activity.name" />
       </div>
 
@@ -199,6 +206,11 @@ onMounted(fetchDetail)
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 16px;
+}
+
+.cover-image .banner-swiper {
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .cover-image img {

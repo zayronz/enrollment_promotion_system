@@ -2,12 +2,13 @@
   <div class="file-uploader">
     <t-upload
       v-model="fileList"
+      name="file"
       :action="uploadUrl"
       :headers="headers"
       :multiple="multiple"
       :max="limit"
       :accept="accept"
-      :theme="listType"
+      :theme="theme"
       @success="handleSuccess"
       @fail="handleError"
       @validate="handleValidate"
@@ -69,6 +70,14 @@ const headers = computed(() => ({
   Authorization: `Bearer ${getToken()}`
 }))
 
+// 根据 accept 属性自动设置 theme
+const theme = computed(() => {
+  if (props.accept && props.accept.includes('image')) {
+    return 'image'
+  }
+  return props.listType
+})
+
 const fileList = ref([])
 
 const syncFileList = () => {
@@ -98,7 +107,8 @@ watch(() => props.modelValue, () => {
 }, { immediate: true, deep: true })
 
 const handleValidate = (context) => {
-  const { file, type } = context
+  console.log('文件验证:', context)
+  const { type } = context
   if (type === 'FILE_OVER_SIZE_LIMIT') {
     MessagePlugin.warning('文件大小不能超过10MB，已自动过滤')
     return false
@@ -107,9 +117,9 @@ const handleValidate = (context) => {
     MessagePlugin.warning(`最多只能上传 ${props.limit} 个文件`)
     return false
   }
+  // 允许同名文件覆盖，直接放行
   if (type === 'FILTER_FILE_SAME_NAME') {
-    MessagePlugin.warning('不能上传同名文件')
-    return false
+    return true
   }
   return true
 }
@@ -117,7 +127,7 @@ const handleValidate = (context) => {
 const handleSuccess = (context) => {
   const { response, file } = context
   console.log('上传成功响应:', response)
-  if (response && response.code === 200 && response.data) {
+  if (response && (response.code === 200 || response.code === 0) && response.data) {
     const fileUrl = response.data
     console.log('上传文件路径:', fileUrl)
 

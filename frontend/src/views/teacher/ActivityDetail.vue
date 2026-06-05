@@ -3,12 +3,15 @@
     <t-loading v-if="loading" text="加载中..." size="small" class="loading-wrap" />
 
     <div v-else-if="activity" class="detail-body">
-      <!-- Cover image -->
-      <div
-        v-if="activity.bannerUrl"
-        class="cover-image"
-        :style="{ backgroundImage: `url(${getFileUrl(activity.bannerUrl)})` }"
-      />
+      <!-- Cover image / banner carousel -->
+      <div v-if="activity.bannerUrls && activity.bannerUrls.length" class="cover-swiper">
+        <t-swiper :autoplay="true">
+          <t-swiper-item v-for="(url, index) in activity.bannerUrls" :key="index">
+            <div class="cover-slide" :style="{ backgroundImage: `url(${getFileUrl(url)})` }" />
+          </t-swiper-item>
+        </t-swiper>
+      </div>
+      <div v-else-if="activity.bannerUrl" class="cover-image" :style="{ backgroundImage: `url(${getFileUrl(activity.bannerUrl)})` }" />
 
       <!-- Video -->
       <div v-if="activity.videoUrl" class="video-section">
@@ -157,6 +160,8 @@ onMounted(fetchDetail)
 .activity-detail { padding: 0; }
 .loading-wrap { display: flex; justify-content: center; padding: 80px 0; }
 .detail-body { max-width: 860px; }
+.cover-swiper { height: 280px; border-radius: 12px; margin-bottom: 24px; overflow: hidden; }
+.cover-slide { height: 100%; background-size: cover; background-position: center; background-color: #f0f2f5; }
 .cover-image { height: 280px; background-size: cover; background-position: center; border-radius: 12px; margin-bottom: 24px; background-color: #f0f2f5; }
 .video-section { margin-bottom: 24px; }
 .detail-video { width: 100%; border-radius: 12px; background: #000; }
@@ -173,6 +178,7 @@ onMounted(fetchDetail)
 .attachment-list { display: flex; flex-direction: column; gap: 8px; }
 .attachment-link { font-size: 14px; }
 @media (max-width: 640px) {
+  .cover-swiper,
   .cover-image { height: 180px; }
   .info-card, .description-card, .attachments-card { padding: 20px; }
 }

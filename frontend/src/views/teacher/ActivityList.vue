@@ -243,13 +243,27 @@ const fetchActivities = async () => {
     total.value = res.data?.total || 0
 
     const bannerRes = await activityApi.getActivityList({ page: 1, size: 5 })
-    banners.value = (bannerRes.data?.records || []).filter(a => a.bannerUrl)
-      .map(a => ({
-        activityId: a.id,
-        title: a.name,
-        description: a.description || '',
-        imageUrl: getFileUrl(a.bannerUrl)
-      }))
+    const bannerList = []
+    ;(bannerRes.data?.records || []).forEach(a => {
+      if (a.bannerUrls && a.bannerUrls.length) {
+        a.bannerUrls.forEach(url => {
+          bannerList.push({
+            activityId: a.id,
+            title: a.name,
+            description: a.description || '',
+            imageUrl: getFileUrl(url)
+          })
+        })
+      } else if (a.bannerUrl) {
+        bannerList.push({
+          activityId: a.id,
+          title: a.name,
+          description: a.description || '',
+          imageUrl: getFileUrl(a.bannerUrl)
+        })
+      }
+    })
+    banners.value = bannerList
   } catch (err) {
     console.error('获取活动列表失败', err)
   } finally {
