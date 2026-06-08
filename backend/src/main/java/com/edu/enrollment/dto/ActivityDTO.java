@@ -39,6 +39,7 @@ public class ActivityDTO {
     private String bannerUrl;
     private String videoUrl;
     private String coverImage;
+    private List<String> attachments;  // 附件路径列表
 
     private List<String> auditFlow;      // 审批流程
     private List<CustomField> customFields;  // 自定义字段
