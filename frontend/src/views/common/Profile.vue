@@ -117,10 +117,10 @@
         <div class="card-body">
           <div class="action-list">
             <div class="action-item" @click="goHome">
-              <div class="action-icon"><HomeIcon /></div>
+              <div class="action-icon"><component :is="route.path.startsWith('/h5') ? LogoutIcon : HomeIcon" /></div>
               <div class="action-text">
-                <span class="action-title">回到首页</span>
-                <span class="action-desc">返回功能主页</span>
+                <span class="action-title">{{ route.path.startsWith('/h5') ? '退出登录' : '回到首页' }}</span>
+                <span class="action-desc">{{ route.path.startsWith('/h5') ? '退出当前账号' : '返回功能主页' }}</span>
               </div>
               <t-icon name="chevron-right" size="16px" class="action-arrow" />
             </div>
@@ -183,7 +183,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
 import { userApi } from '@/api/user'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { HomeIcon, LockOnIcon } from 'tdesign-icons-vue-next'
+import { HomeIcon, LockOnIcon, LogoutIcon } from 'tdesign-icons-vue-next'
 import axios from 'axios'
 import { getToken } from '@/utils/auth'
 
@@ -310,6 +310,12 @@ const handleAvatarUpload = async (e) => {
 }
 
 const goHome = () => {
+  const isH5 = route.path.startsWith('/h5')
+  if (isH5) {
+    userStore.logout()
+    router.push('/h5/login')
+    return
+  }
   const roleHomeMap = {
     STUDENT: '/student/activities',
     TEACHER: '/teacher/activities',

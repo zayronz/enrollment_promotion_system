@@ -94,13 +94,7 @@
             <t-link theme="default" hover="color" @click="$router.push('/forgot-password')">忘记密码</t-link>
           </div>
 
-          <!-- 手机版入口 -->
-          <div class="h5-entry">
-            <t-link theme="default" hover="color" @click="$router.push('/h5/login')">
-              <template #prefix-icon><MobileIcon /></template>
-              手机版登录
-            </t-link>
-          </div>
+
 
           <!-- 测试账号 -->
           <div class="test-accounts" :class="{ open: showTestAccounts }">
@@ -136,7 +130,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
-import { BookOpenIcon, UserIcon, LockOnIcon, MobileIcon } from 'tdesign-icons-vue-next'
+import { BookOpenIcon, UserIcon, LockOnIcon } from 'tdesign-icons-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
 
 const router = useRouter()
