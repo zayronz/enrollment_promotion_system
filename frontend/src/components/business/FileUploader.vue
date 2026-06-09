@@ -1,15 +1,14 @@
 <template>
   <div class="file-uploader">
     <t-upload
-      v-model="fileList"
-      :action="uploadUrl"
-      :headers="headers"
+      v-model:value="fileList"
       :multiple="multiple"
       :max="limit"
       :accept="accept"
       :theme="listType"
-      @success="handleSuccess"
-      @fail="handleError"
+      :auto-upload="false"
+      @change="handleChange"
+      @remove="handleRemove"
       @validate="handleValidate"
     >
       <t-button v-if="listType === 'file'" theme="primary">
@@ -30,8 +29,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
 import { getFileUrl } from '@/utils/file'
 
@@ -64,11 +64,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'upload-success'])
 
-const uploadUrl = '/api/file/upload'
-const headers = computed(() => ({
-  Authorization: `Bearer ${getToken()}`
-}))
-
 const fileList = ref([])
 
 const syncFileList = () => {
@@ -97,6 +92,88 @@ watch(() => props.modelValue, () => {
   syncFileList()
 }, { immediate: true, deep: true })
 
+const uploadFile = async (file) => {
+  console.log('开始上传文件:', file)
+  
+  const formData = new FormData()
+  formData.append('file', file.raw)
+  
+  try {
+    // 使用我们的 request 实例
+    const response = await request({
+      url: '/file/upload',
+      method: 'post',
+      data: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
+    console.log('上传成功响应:', response)
+    
+    if (response.code === 200 && response.data) {
+      return response.data
+    } else {
+      throw new Error(response.message || '上传失败')
+    }
+  } catch (error) {
+    console.error('上传失败:', error)
+    throw error
+  }
+}
+
+const handleChange = async ({ files, currentFile }) => {
+  console.log('handleChange 事件:', { files, currentFile })
+  
+  if (!currentFile) return
+  
+  if (currentFile.status === 'waiting') {
+    try {
+      // 更新状态为上传中
+      currentFile.status = 'progress'
+      
+      const fileUrl = await uploadFile(currentFile)
+      console.log('上传成功，获取到文件路径:', fileUrl)
+      
+      currentFile.status = 'success'
+      currentFile.url = getFileUrl(fileUrl)
+      currentFile.urlPath = fileUrl
+      
+      // 更新 modelValue
+      if (!props.multiple) {
+        emit('update:modelValue', fileUrl)
+      } else {
+        const currentUrls = Array.isArray(props.modelValue) ? [...props.modelValue] : []
+        if (!currentUrls.includes(fileUrl)) {
+          currentUrls.push(fileUrl)
+          emit('update:modelValue', currentUrls)
+        }
+      }
+      
+      emit('upload-success', fileUrl)
+      MessagePlugin.success('上传成功')
+    } catch (error) {
+      currentFile.status = 'fail'
+      const errorMsg = error.response?.data?.message || error.message || '上传失败'
+      MessagePlugin.error(errorMsg)
+    }
+  }
+}
+
+const handleRemove = ({ file, index }) => {
+  console.log('移除文件:', file, index)
+  
+  if (!props.multiple) {
+    emit('update:modelValue', '')
+  } else {
+    const currentUrls = Array.isArray(props.modelValue) ? [...props.modelValue] : []
+    // 这里需要根据文件名或路径来删除，简化处理：重新同步
+    setTimeout(() => {
+      syncFileList()
+    }, 0)
+  }
+}
+
 const handleValidate = (context) => {
   const { file, type } = context
   if (type === 'FILE_OVER_SIZE_LIMIT') {
@@ -112,44 +189,6 @@ const handleValidate = (context) => {
     return false
   }
   return true
-}
-
-const handleSuccess = (context) => {
-  const { response, file } = context
-  console.log('上传成功响应:', response)
-  if (response && response.code === 200 && response.data) {
-    const fileUrl = response.data
-    console.log('上传文件路径:', fileUrl)
-
-    if (!props.multiple) {
-      fileList.value = [{
-        name: file.name,
-        url: getFileUrl(fileUrl),
-        status: 'success'
-      }]
-      emit('update:modelValue', fileUrl)
-    } else {
-      const currentUrls = Array.isArray(props.modelValue) ? [...props.modelValue] : []
-      if (!currentUrls.includes(fileUrl)) {
-        currentUrls.push(fileUrl)
-        fileList.value.push({
-          name: file.name,
-          url: getFileUrl(fileUrl),
-          status: 'success'
-        })
-        emit('update:modelValue', currentUrls)
-      }
-    }
-    emit('upload-success', fileUrl)
-    MessagePlugin.success('上传成功')
-  } else {
-    MessagePlugin.error(response?.message || '上传失败')
-  }
-}
-
-const handleError = (context) => {
-  console.error('上传失败:', context)
-  MessagePlugin.error(context?.response?.message || '上传失败，请重试')
 }
 </script>
 

@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -57,9 +58,11 @@ public class ActivityService {
         voPage.setCurrent(entityPage.getCurrent());
         voPage.setSize(entityPage.getSize());
         voPage.setTotal(entityPage.getTotal());
-        voPage.setRecords(entityPage.getRecords().stream()
-                .map(this::toVO)
-                .collect(Collectors.toList()));
+        List<ActivityVO> records = new java.util.ArrayList<>();
+        for (ActivityEntity entity : entityPage.getRecords()) {
+            records.add(toVO(entity));
+        }
+        voPage.setRecords(records);
 
         return voPage;
     }
@@ -70,9 +73,12 @@ public class ActivityService {
             throw new BusinessException("活动不存在");
         }
         ActivityVO vo = toVO(entity);
-        // 获取活动相关的附件
         List<AttachmentEntity> attachments = attachmentMapper.selectByRelated(id, "activity");
-        vo.setAttachments(attachments.stream().map(this::toAttachmentVO).collect(Collectors.toList()));
+        List<Map<String, Object>> attachmentList = new java.util.ArrayList<>();
+        for (AttachmentEntity attachment : attachments) {
+            attachmentList.add(toAttachmentVO(attachment));
+        }
+        vo.setAttachments(attachmentList);
         return vo;
     }
 
@@ -207,7 +213,11 @@ public class ActivityService {
 
     public List<ActivityVO> getOpenActivities() {
         List<ActivityEntity> entities = activityMapper.selectOpenActivities();
-        return entities.stream().map(this::toVO).collect(Collectors.toList());
+        List<ActivityVO> result = new java.util.ArrayList<>();
+        for (ActivityEntity entity : entities) {
+            result.add(toVO(entity));
+        }
+        return result;
     }
 
     private ActivityVO toVO(ActivityEntity entity) {

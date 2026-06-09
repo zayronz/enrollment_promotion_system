@@ -7,6 +7,8 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+import java.util.List;
+
 @Mapper
 public interface UserMapper extends BaseMapper<UserEntity> {
 
@@ -18,4 +20,7 @@ public interface UserMapper extends BaseMapper<UserEntity> {
 
     @Select("SELECT * FROM user WHERE id = #{id}")
     UserEntity selectUserById(Long id);
+
+    @Select("SELECT * FROM user WHERE college_id = #{collegeId} AND role IN ('STUDENT', 'TEACHER')")
+    List<UserEntity> selectByCollegeId(Long collegeId);
 }

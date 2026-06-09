@@ -62,6 +62,11 @@
         <FileUploader v-model="form.videoUrl" :multiple="false" accept="video/*" />
       </t-form-item>
 
+      <t-form-item label="附件">
+        <FileUploader v-model="form.attachments" :multiple="true" :limit="10" />
+        <span class="form-tip">支持上传文档、图片等附件，最多10个</span>
+      </t-form-item>
+
       <t-divider align="left">报名设置</t-divider>
 
       <t-form-item label="自定义字段">
@@ -144,6 +149,7 @@ const form = reactive({
   coverImage: '',
   bannerImages: [],
   videoUrl: '',
+  attachments: [],
   customFields: [],
   maxStudentPerSchool: 10,
   maxTeacherPerSchool: 5,
@@ -198,6 +204,7 @@ const buildSubmitData = () => {
     coverImage: form.coverImage || null,
     bannerUrl: form.bannerImages.length > 0 ? form.bannerImages[0] : null,
     videoUrl: form.videoUrl || null,
+    attachments: form.attachments,
     customFields: form.customFields.map(f => ({
       ...f,
       options: f.optionsStr ? f.optionsStr.split(',') : []

@@ -45,3 +45,49 @@ export function isVideo(path) {
   const ext = path.split('.').pop().toLowerCase()
   return ['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv'].includes(ext)
 }
+
+/**
+ * 下载文件
+ * @param {Blob} blob - 文件Blob对象
+ * @param {string} filename - 文件名
+ */
+export function downloadBlob(blob, filename) {
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename || 'download'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
+}
+
+/**
+ * 根据附件ID下载文件
+ * @param {number} attachmentId - 附件ID
+ */
+export async function downloadFileById(attachmentId) {
+  try {
+    const { fileApi } = await import('@/api/file')
+    const response = await fileApi.downloadFile(attachmentId)
+    
+    if (response && response.data) {
+      const contentDisposition = response.headers?.['content-disposition'] || response.headers?.['Content-Disposition']
+      let filename = 'download'
+      
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename\*?=UTF-8''(.+)/)
+        if (match) {
+          filename = decodeURIComponent(match[1])
+        }
+      }
+      
+      downloadBlob(response.data, filename)
+      return true
+    }
+    return false
+  } catch (error) {
+    console.error('下载文件失败:', error)
+    return false
+  }
+}

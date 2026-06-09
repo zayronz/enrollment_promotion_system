@@ -64,16 +64,19 @@
       <div v-if="activity.attachments && activity.attachments.length > 0" class="attachments-card">
         <h3 class="section-title">附件下载</h3>
         <div class="attachment-list">
-          <t-link
+          <div
             v-for="(file, index) in activity.attachments"
             :key="index"
-            theme="primary"
-            hover="color"
-            class="attachment-link"
+            class="attachment-item"
+            @click="downloadAttachment(file)"
           >
-            <template #prefix-icon><FileIcon /></template>
-            {{ file.name || file.fileName || '附件' + (index + 1) }}
-          </t-link>
+            <div class="attachment-info">
+              <FileIcon class="attachment-icon" />
+              <span class="attachment-name">{{ file.fileName || '附件' + (index + 1) }}</span>
+              <span class="attachment-size">{{ formatFileSize(file.fileSize) }}</span>
+            </div>
+            <t-icon name="download" size="16px" class="download-icon" />
+          </div>
         </div>
       </div>
     </div>
@@ -150,6 +153,19 @@ const getStatusTheme = (status) => {
 const getStatusLabel = (status) => {
   const map = { 0: '未发布', 1: '报名中', 2: '已结束' }
   return map[status] || '未知'
+}
+
+const formatFileSize = (size) => {
+  if (!size) return ''
+  if (size < 1024) return size + ' B'
+  if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB'
+  return (size / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+const downloadAttachment = (file) => {
+  if (file.fullUrl) {
+    window.open(file.fullUrl, '_blank')
+  }
 }
 
 onMounted(fetchDetail)
@@ -244,8 +260,42 @@ onMounted(fetchDetail)
   flex-direction: column;
   gap: 8px;
 }
-.attachment-link {
+.attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--td-bg-color-secondarycontainer);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.attachment-item:hover {
+  background: var(--td-bg-color-container-hover);
+}
+.attachment-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.attachment-icon {
+  font-size: 18px;
+  color: var(--td-brand-color);
+}
+.attachment-name {
   font-size: 14px;
+  color: var(--td-text-color-primary);
+}
+.attachment-size {
+  font-size: 12px;
+  color: var(--td-text-color-placeholder);
+}
+.download-icon {
+  color: var(--td-text-color-placeholder);
+  transition: color 0.2s;
+}
+.attachment-item:hover .download-icon {
+  color: var(--td-brand-color);
 }
 
 @media (max-width: 640px) {

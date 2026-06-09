@@ -108,6 +108,45 @@
         </div>
       </div>
 
+      <!-- 修改密码卡片 -->
+      <div class="info-card password-card">
+        <div class="card-header">
+          <t-icon name="lock-on" size="18px" class="card-icon" />
+          <span>修改密码</span>
+        </div>
+        <div class="card-body">
+          <t-form
+            ref="passwordFormRef"
+            :data="passwordForm"
+            label-width="100px"
+            class="password-form"
+            @submit="handleChangePassword"
+          >
+            <t-form-item label="原密码" name="oldPassword">
+              <t-input v-model="passwordForm.oldPassword" type="password" placeholder="请输入原密码" size="large">
+                <template #prefix-icon><t-icon name="lock" /></template>
+              </t-input>
+            </t-form-item>
+            <t-form-item label="新密码" name="newPassword">
+              <t-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码（至少6位）" size="large">
+                <template #prefix-icon><t-icon name="lock" /></template>
+              </t-input>
+            </t-form-item>
+            <t-form-item label="确认密码" name="confirmPassword">
+              <t-input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码" size="large">
+                <template #prefix-icon><t-icon name="lock" /></template>
+              </t-input>
+            </t-form-item>
+            <t-form-item class="form-actions">
+              <t-button theme="primary" type="submit" :loading="passwordLoading" size="large">
+                <template #icon><t-icon name="check" /></template>
+                修改密码
+              </t-button>
+            </t-form-item>
+          </t-form>
+        </div>
+      </div>
+
       <!-- 快捷操作卡片 -->
       <div class="info-card action-card">
         <div class="card-header">
@@ -145,10 +184,18 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const formRef = ref(null)
+const passwordFormRef = ref(null)
 const saving = ref(false)
+const passwordLoading = ref(false)
 const avatarUploading = ref(false)
 const avatarPreviewUrl = ref('')
 const avatarInputRef = ref(null)
+
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
 
 const initData = {
   username: '',
@@ -253,6 +300,37 @@ const handleAvatarUpload = async (e) => {
   } finally {
     avatarUploading.value = false
     avatarInputRef.value.value = ''
+  }
+}
+
+const handleChangePassword = async () => {
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    MessagePlugin.warning('两次输入的密码不一致')
+    return
+  }
+  if (passwordForm.newPassword.length < 6) {
+    MessagePlugin.warning('密码长度不能少于6位')
+    return
+  }
+
+  passwordLoading.value = true
+  try {
+    await userApi.changePassword({
+      oldPassword: passwordForm.oldPassword,
+      newPassword: passwordForm.newPassword
+    })
+    MessagePlugin.success('密码修改成功，请重新登录')
+    passwordForm.oldPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
+    setTimeout(() => {
+      userStore.logout()
+      router.push('/login')
+    }, 1500)
+  } catch (err) {
+    console.error('修改密码失败', err)
+  } finally {
+    passwordLoading.value = false
   }
 }
 

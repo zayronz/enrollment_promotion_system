@@ -80,12 +80,14 @@ public class AuditService {
      * 校验名额限制
      */
     private void checkQuotaLimit(RegistrationEntity registration, ActivityEntity activity) {
-        // 查找同学校已通过的报名
         List<RegistrationEntity> sameSchoolPassed = registrationMapper.findByActivityAndSchool(
                 registration.getActivityId(), registration.getTargetSchool());
-        long passedCount = sameSchoolPassed.stream()
-                .filter(r -> r.getStatus() == 1 || r.getStatus() == 2) // 学院通过或学校通过
-                .count();
+        long passedCount = 0;
+        for (RegistrationEntity r : sameSchoolPassed) {
+            if (r.getStatus() == 1 || r.getStatus() == 2) {
+                passedCount++;
+            }
+        }
 
         if (registration.getUserType() == 0) { // 学生
             if (activity.getMaxStudentPerSchool() != null

@@ -34,10 +34,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ResultVO<?> handleValidationException(MethodArgumentNotValidException e) {
-        String message = e.getBindingResult().getFieldErrors().stream()
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                .reduce((a, b) -> a + "; " + b)
-                .orElse("参数校验失败");
+        StringBuilder sb = new StringBuilder();
+        for (var error : e.getBindingResult().getFieldErrors()) {
+            if (sb.length() > 0) {
+                sb.append("; ");
+            }
+            sb.append(error.getField()).append(": ").append(error.getDefaultMessage());
+        }
+        String message = sb.length() > 0 ? sb.toString() : "参数校验失败";
         log.warn("参数校验失败: {}", message);
         return ResultVO.error(400, message);
     }

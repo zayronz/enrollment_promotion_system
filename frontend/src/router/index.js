@@ -15,6 +15,12 @@ const routes = [
         meta: { requiresAuth: false }
     },
     {
+        path: '/forgot-password',
+        name: 'ForgotPassword',
+        component: () => import('@/views/login/ForgotPassword.vue'),
+        meta: { requiresAuth: false }
+    },
+    {
         path: '/',
         component: () => import('@/views/layout/StudentLayout.vue'),
         meta: { requiresAuth: true, role: 'STUDENT' },
@@ -46,7 +52,7 @@ const routes = [
         meta: { requiresAuth: true, role: 'COLLEGE' },
         children: [
             { path: '', redirect: '/college/pending' },
-            { path: 'pending', name: 'PendingAudit', component: () => import('@/views/college/PendingAudit.vue') },
+            { path: 'pending', name: 'PendingAudit', component: () => import('@/views/college/AuditPending.vue') },
             { path: 'history', name: 'AuditHistory', component: () => import('@/views/college/AuditHistory.vue') },
             { path: 'feedback', name: 'CollegeFeedback', component: () => import('@/views/college/FeedbackList.vue') },
             { path: 'statistics', name: 'CollegeStatistics', component: () => import('@/views/college/Statistics.vue') }
@@ -63,7 +69,7 @@ const routes = [
             { path: 'activity/create', name: 'ActivityCreate', component: () => import('@/views/school/activity/ActivityCreate.vue') },
             { path: 'activity/edit/:id', name: 'ActivityEdit', component: () => import('@/views/school/activity/ActivityEdit.vue') },
             { path: 'activity/detail/:id', name: 'ActivityDetail', component: () => import('@/views/school/activity/ActivityDetail.vue') },
-            { path: 'audit/pending', name: 'SchoolPendingAudit', component: () => import('@/views/school/audit/PendingAudit.vue') },
+            { path: 'audit/pending', name: 'SchoolPendingAudit', component: () => import('@/views/school/AuditPending.vue') },
             { path: 'user/list', name: 'UserList', component: () => import('@/views/school/user/UserList.vue') },
             { path: 'feedback/list', name: 'AllFeedbacks', component: () => import('@/views/school/feedback/AllFeedbacks.vue') }
         ]

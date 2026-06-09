@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,13 +21,9 @@ public class StatisticsService {
     private final RegistrationMapper registrationMapper;
     private final UserService userService;
 
-    /**
-     * 获取学校端仪表盘数据
-     */
     public Map<String, Object> getDashboardStats() {
         Map<String, Object> stats = new HashMap<>();
 
-        // 基本统计数据
         long totalActivities = activityMapper.selectCount(null);
         long totalRegistrations = registrationMapper.selectCount(null);
 
@@ -45,20 +40,19 @@ public class StatisticsService {
         stats.put("pendingAudit", pendingAudit);
         stats.put("passedCount", passedCount);
 
-        // 报名趋势（近12个月）
         List<Map<String, Object>> monthlyTrend = getMonthlyRegistrationTrend();
         stats.put("monthlyTrend", monthlyTrend);
 
-        // 活动类型分布
         List<Map<String, Object>> typeDistribution = getActivityTypeDistribution();
         stats.put("typeDistribution", typeDistribution);
 
-        // 最近活动
         List<ActivityEntity> recentActivities = activityMapper.selectList(
                 new LambdaQueryWrapper<ActivityEntity>()
                         .orderByDesc(ActivityEntity::getCreateTime)
                         .last("LIMIT 5"));
-        List<Map<String, Object>> recentList = recentActivities.stream().map(a -> {
+
+        List<Map<String, Object>> recentList = new ArrayList<>();
+        for (ActivityEntity a : recentActivities) {
             Map<String, Object> map = new HashMap<>();
             map.put("id", a.getId());
             map.put("name", a.getName());
@@ -69,66 +63,61 @@ public class StatisticsService {
             regWrapper.eq(RegistrationEntity::getActivityId, a.getId());
             long regCount = registrationMapper.selectCount(regWrapper);
             map.put("registrationCount", regCount);
-            return map;
-        }).collect(Collectors.toList());
+            recentList.add(map);
+        }
         stats.put("recentActivities", recentList);
 
         return stats;
     }
 
-    /**
-     * 获取学院端统计数据
-     */
     public Map<String, Object> getCollegeStats(Long collegeId) {
         Map<String, Object> stats = new HashMap<>();
 
-        // 获取本学院用户列表
         List<UserEntity> collegeUsers = userService.getByCollegeId(collegeId);
-        List<Long> collegeUserIds = collegeUsers.stream()
-                .map(UserEntity::getId)
-                .collect(Collectors.toList());
+        List<Long> collegeUserIds = new ArrayList<>();
+        for (UserEntity user : collegeUsers) {
+            collegeUserIds.add(user.getId());
+        }
 
         if (collegeUserIds.isEmpty()) {
             stats.put("totalRegistrations", 0);
             stats.put("passedCount", 0);
             stats.put("pendingAudit", 0);
             stats.put("schoolCount", 0);
-            stats.put("schoolStats", List.of());
-            stats.put("activityStats", List.of());
+            stats.put("schoolStats", new ArrayList<>());
+            stats.put("activityStats", new ArrayList<>());
             return stats;
         }
 
-        // 总报名数
         LambdaQueryWrapper<RegistrationEntity> allRegWrapper = new LambdaQueryWrapper<>();
         allRegWrapper.in(RegistrationEntity::getUserId, collegeUserIds);
         long totalRegistrations = registrationMapper.selectCount(allRegWrapper);
 
-        // 已通过
         LambdaQueryWrapper<RegistrationEntity> passedWrapper = new LambdaQueryWrapper<>();
         passedWrapper.in(RegistrationEntity::getUserId, collegeUserIds)
                 .eq(RegistrationEntity::getStatus, 2);
         long passedCount = registrationMapper.selectCount(passedWrapper);
 
-        // 待审核
         LambdaQueryWrapper<RegistrationEntity> pendingWrapper = new LambdaQueryWrapper<>();
         pendingWrapper.in(RegistrationEntity::getUserId, collegeUserIds)
                 .eq(RegistrationEntity::getStatus, 0);
         long pendingAudit = registrationMapper.selectCount(pendingWrapper);
 
-        // 涉及学校数
         List<RegistrationEntity> allRegs = registrationMapper.selectList(allRegWrapper);
-        long schoolCount = allRegs.stream()
-                .map(RegistrationEntity::getTargetSchool)
-                .filter(Objects::nonNull)
-                .distinct()
-                .count();
+
+        Set<String> schoolSet = new HashSet<>();
+        for (RegistrationEntity reg : allRegs) {
+            if (reg.getTargetSchool() != null) {
+                schoolSet.add(reg.getTargetSchool());
+            }
+        }
+        long schoolCount = schoolSet.size();
 
         stats.put("totalRegistrations", totalRegistrations);
         stats.put("passedCount", passedCount);
         stats.put("pendingAudit", pendingAudit);
         stats.put("schoolCount", schoolCount);
 
-        // 各学校报名分布
         Map<String, Map<String, Object>> schoolMap = new LinkedHashMap<>();
         for (RegistrationEntity reg : allRegs) {
             String school = reg.getTargetSchool() != null ? reg.getTargetSchool() : "未知";
@@ -150,33 +139,37 @@ public class StatisticsService {
         }
         stats.put("schoolStats", new ArrayList<>(schoolMap.values()));
 
-        // 各活动报名统计
-        List<RegistrationEntity> registrations = registrationMapper.selectList(allRegWrapper);
-        Map<Long, Long> activityCountMap = registrations.stream()
-                .collect(Collectors.groupingBy(RegistrationEntity::getActivityId, Collectors.counting()));
+        Map<Long, Long> activityCountMap = new HashMap<>();
+        for (RegistrationEntity reg : allRegs) {
+            Long activityId = reg.getActivityId();
+            activityCountMap.put(activityId, activityCountMap.getOrDefault(activityId, 0L) + 1);
+        }
 
-        List<Map<String, Object>> activityStats = activityCountMap.entrySet().stream()
-                .map(entry -> {
-                    ActivityEntity act = activityMapper.selectById(entry.getKey());
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("name", act != null ? act.getName() : "未知活动");
-                    m.put("total", entry.getValue());
-                    m.put("status", act != null ? (act.getStatus() == 1 ? "进行中" :
-                            act.getStatus() == 2 ? "已结束" : "草稿") : "-");
-                    return m;
-                })
-                .sorted((a, b) -> Long.compare((Long) b.get("total"), (Long) a.get("total")))
-                .limit(10)
-                .collect(Collectors.toList());
+        List<Map<String, Object>> activityStats = new ArrayList<>();
+        for (Map.Entry<Long, Long> entry : activityCountMap.entrySet()) {
+            ActivityEntity act = activityMapper.selectById(entry.getKey());
+            Map<String, Object> m = new HashMap<>();
+            m.put("name", act != null ? act.getName() : "未知活动");
+            m.put("total", entry.getValue());
+            m.put("status", act != null ? (act.getStatus() == 1 ? "进行中" :
+                    act.getStatus() == 2 ? "已结束" : "草稿") : "-");
+            activityStats.add(m);
+        }
+        activityStats.sort((a, b) -> Long.compare((Long) b.get("total"), (Long) a.get("total")));
+        if (activityStats.size() > 10) {
+            activityStats = activityStats.subList(0, 10);
+        }
         stats.put("activityStats", activityStats);
 
-        // 人员结构
-        long studentCount = allRegs.stream()
-                .filter(r -> r.getUserType() == 0)
-                .count();
-        long teacherCount = allRegs.stream()
-                .filter(r -> r.getUserType() == 1)
-                .count();
+        long studentCount = 0;
+        long teacherCount = 0;
+        for (RegistrationEntity reg : allRegs) {
+            if (reg.getUserType() == 0) {
+                studentCount++;
+            } else if (reg.getUserType() == 1) {
+                teacherCount++;
+            }
+        }
         long total = studentCount + teacherCount;
         stats.put("studentCount", studentCount);
         stats.put("teacherCount", teacherCount);
@@ -186,9 +179,6 @@ public class StatisticsService {
         return stats;
     }
 
-    /**
-     * 近12个月报名趋势
-     */
     private List<Map<String, Object>> getMonthlyRegistrationTrend() {
         List<Map<String, Object>> trend = new ArrayList<>();
         DateTimeFormatter monthFmt = DateTimeFormatter.ofPattern("yyyy-MM");
@@ -210,29 +200,29 @@ public class StatisticsService {
         return trend;
     }
 
-    /**
-     * 活动类型分布统计
-     */
     private List<Map<String, Object>> getActivityTypeDistribution() {
         List<ActivityEntity> allActivities = activityMapper.selectList(null);
 
-        Map<Integer, Long> typeCountMap = allActivities.stream()
-                .collect(Collectors.groupingBy(ActivityEntity::getType, Collectors.counting()));
+        Map<Integer, Long> typeCountMap = new HashMap<>();
+        for (ActivityEntity act : allActivities) {
+            Integer type = act.getType() != null ? act.getType() : 0;
+            typeCountMap.put(type, typeCountMap.getOrDefault(type, 0L) + 1);
+        }
 
-        // 统计每种类型活动的报名数
         Map<Integer, Long> typeRegCountMap = new HashMap<>();
         for (ActivityEntity act : allActivities) {
             LambdaQueryWrapper<RegistrationEntity> regWrapper = new LambdaQueryWrapper<>();
             regWrapper.eq(RegistrationEntity::getActivityId, act.getId());
             long regCount = registrationMapper.selectCount(regWrapper);
-            typeRegCountMap.merge(act.getType(), regCount, Long::sum);
+            Integer type = act.getType() != null ? act.getType() : 0;
+            typeRegCountMap.put(type, typeRegCountMap.getOrDefault(type, 0L) + regCount);
         }
 
         List<Map<String, Object>> distribution = new ArrayList<>();
         String[] typeNames = {"校内活动", "线上宣讲", "线下招生", "校园开放日", "校外活动"};
 
         for (Map.Entry<Integer, Long> entry : typeCountMap.entrySet()) {
-            int type = entry.getKey() != null ? entry.getKey() : 0;
+            int type = entry.getKey();
             Map<String, Object> item = new HashMap<>();
             item.put("type", type);
             item.put("name", type < typeNames.length ? typeNames[type] : "其他");
