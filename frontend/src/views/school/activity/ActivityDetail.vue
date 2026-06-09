@@ -68,6 +68,32 @@
             <img :src="getFileUrl(detail.bannerUrl)" :alt="detail.name" class="banner-image" />
           </div>
 
+          <!-- 相关链接 -->
+          <div v-if="detail.linkUrl" class="link-section">
+            <h3 class="section-title">相关链接</h3>
+            <t-link :href="detail.linkUrl" target="_blank" theme="primary">
+              <template #prefix-icon><LinkIcon /></template>
+              {{ detail.linkUrl }}
+            </t-link>
+          </div>
+
+          <!-- 附件下载 -->
+          <div v-if="detail.attachments && detail.attachments.length > 0" class="attachments-section">
+            <h3 class="section-title">附件下载</h3>
+            <div class="attachment-list">
+              <div
+                v-for="(file, index) in detail.attachments"
+                :key="index"
+                class="attachment-item"
+                @click="downloadFile(file)"
+              >
+                <FileIcon class="attachment-icon" />
+                <span class="attachment-name">{{ file.name || file.fileName || '附件' + (index + 1) }}</span>
+                <DownloadIcon class="attachment-download" />
+              </div>
+            </div>
+          </div>
+
           <!-- 审批流程 -->
           <div v-if="detail.auditFlow" class="flow-section">
             <h3 class="section-title">审批流程</h3>
@@ -98,7 +124,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { activityApi } from '@/api/activity'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { ArrowLeftIcon, EditIcon } from 'tdesign-icons-vue-next'
+import { ArrowLeftIcon, EditIcon, LinkIcon, FileIcon, DownloadIcon } from 'tdesign-icons-vue-next'
 import { getFileUrl } from '@/utils/file'
 
 const route = useRoute()
@@ -131,6 +157,15 @@ const formatDate = (dateStr) => {
   if (!dateStr) return '-'
   const d = new Date(dateStr)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const downloadFile = (file) => {
+  const url = file.url || file.fileUrl || file.path || file.filePath
+  if (url) {
+    window.open(getFileUrl(url), '_blank')
+  } else {
+    MessagePlugin.warning('附件链接无效')
+  }
 }
 
 const fetchDetail = async () => {
@@ -168,6 +203,26 @@ onMounted(fetchDetail)
 .video-section .video-player { width: 100%; max-height: 400px; border-radius: 8px; }
 .desc-section .desc-content { line-height: 1.8; color: var(--td-text-color-secondary); }
 .banner-section .banner-image { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; }
+
+.link-section { margin-bottom: 24px; }
+
+.attachments-section { margin-bottom: 24px; }
+.attachment-list { display: flex; flex-direction: column; gap: 8px; }
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f8f9fb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.attachment-item:hover { background: #e8f0fe; }
+.attachment-icon { color: #3b82f6; font-size: 18px; }
+.attachment-name { flex: 1; font-size: 14px; color: var(--td-text-color-primary); }
+.attachment-download { color: #9ca3af; font-size: 16px; }
+.attachment-item:hover .attachment-download { color: #3b82f6; }
 
 .flow-section { margin-bottom: 24px; }
 .fields-section { margin-bottom: 24px; }

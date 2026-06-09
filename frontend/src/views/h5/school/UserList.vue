@@ -21,6 +21,9 @@
               <t-tag :theme="getRoleTheme(item.role)" variant="light" size="small">
                 {{ getRoleLabel(item.role) }}
               </t-tag>
+              <t-tag :theme="getStatusTheme(item.status)" variant="light" size="small" style="margin-left: 6px;">
+                {{ getStatusLabel(item.status) }}
+              </t-tag>
             </div>
           </div>
         </div>
@@ -66,6 +69,14 @@ const getRoleTheme = (role) => {
 const getRoleLabel = (role) => {
   const map = { 'STUDENT': '学生', 'TEACHER': '教师', 'COLLEGE': '学院', 'SCHOOL': '学校' }
   return map[role] || '未知'
+}
+
+const getStatusTheme = (status) => {
+  return (status === 1 || status === 'ACTIVE') ? 'success' : 'danger'
+}
+
+const getStatusLabel = (status) => {
+  return (status === 1 || status === 'ACTIVE') ? '正常' : '禁用'
 }
 
 const fetchData = async () => {

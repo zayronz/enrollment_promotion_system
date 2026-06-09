@@ -59,8 +59,8 @@
         </t-tag>
       </template>
       <template #status="{ row }">
-        <t-tag :theme="row.status === 'ACTIVE' ? 'success' : 'danger'" variant="light" size="small">
-          {{ row.status === 'ACTIVE' ? '正常' : '禁用' }}
+        <t-tag :theme="getStatusTheme(row.status)" variant="light" size="small">
+          {{ getStatusLabel(row.status) }}
         </t-tag>
       </template>
       <template #action="{ row }">
@@ -69,11 +69,11 @@
             编辑
           </t-button>
           <t-button
-            v-if="row.status === 'ACTIVE'"
+            v-if="row.status === 1 || row.status === 'ACTIVE'"
             theme="warning"
             variant="text"
             size="small"
-            @click="toggleStatus(row, 'DISABLED')"
+            @click="toggleStatus(row, 0)"
           >
             禁用
           </t-button>
@@ -82,7 +82,7 @@
             theme="success"
             variant="text"
             size="small"
-            @click="toggleStatus(row, 'ACTIVE')"
+            @click="toggleStatus(row, 1)"
           >
             启用
           </t-button>
@@ -285,13 +285,23 @@ const handleSave = async () => {
 
 const toggleStatus = async (row, status) => {
   try {
-    // 前端使用字符串状态，后端 UserUpdateDTO.status 为 Integer，需转换为数字
-    await userApi.updateUser(row.id, { status: status === 'ACTIVE' ? 1 : 0 })
-    MessagePlugin.success(status === 'ACTIVE' ? '已启用' : '已禁用')
+    // status: 1=正常, 0=禁用
+    await userApi.updateUser(row.id, { status: status })
+    MessagePlugin.success(status === 1 ? '已启用' : '已禁用')
     fetchData()
   } catch (err) {
     console.error('操作失败', err)
   }
+}
+
+const getStatusTheme = (status) => {
+  // 兼容整数和字符串状态值
+  return (status === 1 || status === 'ACTIVE') ? 'success' : 'danger'
+}
+
+const getStatusLabel = (status) => {
+  // 兼容整数和字符串状态值
+  return (status === 1 || status === 'ACTIVE') ? '正常' : '禁用'
 }
 
 const handleDelete = async (id) => {

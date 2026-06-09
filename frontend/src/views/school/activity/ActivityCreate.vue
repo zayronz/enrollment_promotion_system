@@ -55,7 +55,7 @@
       </t-form-item>
 
       <t-form-item label="轮播图">
-        <FileUploader v-model="form.bannerImages" :multiple="true" :limit="5" accept="image/*" />
+        <FileUploader v-model="form.bannerImages" :multiple="false" accept="image/*" tip-text="支持上传一张Banner图片" />
       </t-form-item>
 
       <t-form-item label="宣传视频">
@@ -142,7 +142,7 @@ const form = reactive({
   registrationTime: [],
   description: '',
   coverImage: '',
-  bannerImages: [],
+  bannerImages: '',
   videoUrl: '',
   customFields: [],
   maxStudentPerSchool: 10,
@@ -159,7 +159,10 @@ const rules = {
 
 const formatDate = (date) => {
   if (!date) return ''
-  if (typeof date === 'string') return date
+  if (typeof date === 'string') {
+    // 将 ISO 格式 (T分隔) 转换为后端期望的格式 (空格分隔)
+    return date.replace('T', ' ')
+  }
   // 处理日期对象
   const d = new Date(date)
   const year = d.getFullYear()
@@ -196,7 +199,7 @@ const buildSubmitData = () => {
     registrationEndTime: formatDate(form.registrationTime[1]),
     description: form.description,
     coverImage: form.coverImage || null,
-    bannerUrl: form.bannerImages.length > 0 ? form.bannerImages[0] : null,
+    bannerUrl: form.bannerImages || null,
     videoUrl: form.videoUrl || null,
     customFields: form.customFields.map(f => ({
       ...f,

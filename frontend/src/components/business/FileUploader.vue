@@ -58,7 +58,7 @@ const props = defineProps({
   },
   tipText: {
     type: String,
-    default: '支持图片、文档格式，单个文件不超过10MB'
+    default: '支持图片、文档、视频格式，单个文件不超过30MB'
   }
 })
 
@@ -100,7 +100,7 @@ watch(() => props.modelValue, () => {
 const handleValidate = (context) => {
   const { file, type } = context
   if (type === 'FILE_OVER_SIZE_LIMIT') {
-    MessagePlugin.warning('文件大小不能超过10MB，已自动过滤')
+    MessagePlugin.warning('文件大小不能超过30MB，已自动过滤')
     return false
   }
   if (type === 'FILES_OVER_LENGTH_LIMIT') {
