@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/audit")
@@ -33,5 +34,16 @@ public class AuditController {
                                   @CurrentUserId Long auditorId) {
         auditService.batchAudit(dto.getRegistrationIds(), dto.getPassed(), dto.getComment(), auditorId);
         return ResultVO.success();
+    }
+
+    @GetMapping("/history")
+    @PreAuthorize("hasAnyRole('COLLEGE', 'SCHOOL')")
+    public ResultVO<?> history(@CurrentUserId Long auditorId,
+                               @RequestParam(defaultValue = "1") Integer page,
+                               @RequestParam(defaultValue = "10") Integer size,
+                               @RequestParam(required = false) String keyword,
+                               @RequestParam(required = false) Long activityId,
+                               @RequestParam(required = false) String result) {
+        return ResultVO.success(auditService.getAuditHistory(auditorId, page, size, keyword, activityId, result));
     }
 }

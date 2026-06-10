@@ -7,11 +7,16 @@ import com.edu.enrollment.entity.RegistrationEntity;
 import com.edu.enrollment.entity.UserEntity;
 import com.edu.enrollment.mapper.AuditRecordMapper;
 import com.edu.enrollment.mapper.RegistrationMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -111,5 +116,83 @@ public class AuditService {
             dto.setComment(comment);
             audit(dto, auditorId);
         }
+    }
+
+    /**
+     * 查询审核历史记录（分页）
+     */
+    public Map<String, Object> getAuditHistory(Long auditorId, Integer page, Integer size,
+                                                 String keyword, Long activityId, String result) {
+        LambdaQueryWrapper<AuditRecordEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AuditRecordEntity::getAuditorId, auditorId);
+
+        // 按审核结果过滤
+        if ("APPROVED".equals(result)) {
+            wrapper.eq(AuditRecordEntity::getResult, 1);
+        } else if ("REJECTED".equals(result)) {
+            wrapper.eq(AuditRecordEntity::getResult, 2);
+        }
+
+        wrapper.orderByDesc(AuditRecordEntity::getCreateTime);
+
+        Page<AuditRecordEntity> auditPage = new Page<>(page, size);
+        auditPage = auditRecordMapper.selectPage(auditPage, wrapper);
+
+        // 关联报名记录、活动、用户信息
+        List<Map<String, Object>> enrichedRecords = auditPage.getRecords().stream()
+                .map(record -> {
+                    Map<String, Object> map = new HashMap<>();
+                    RegistrationEntity registration = registrationMapper.selectById(record.getRegistrationId());
+
+                    String realName = "-";
+                    String userType = "-";
+                    String activityTitle = "-";
+                    String targetSchool = "-";
+
+                    if (registration != null) {
+                        UserEntity user = userService.getById(registration.getUserId());
+                        if (user != null) {
+                            realName = user.getRealName() != null ? user.getRealName() : user.getUsername();
+                            userType = registration.getUserType() == 0 ? "STUDENT" : "TEACHER";
+                        }
+                        targetSchool = registration.getTargetSchool() != null ? registration.getTargetSchool() : "-";
+
+                        // 按活动ID过滤
+                        if (activityId != null && !activityId.equals(registration.getActivityId())) {
+                            return null; // 不匹配的活动，过滤掉
+                        }
+
+                        ActivityEntity activity = activityService.getById(registration.getActivityId());
+                        if (activity != null) {
+                            activityTitle = activity.getName();
+                            // 按关键词过滤（搜索报名人或活动名称）
+                            if (keyword != null && !keyword.isEmpty()) {
+                                if (!realName.contains(keyword) && !activityTitle.contains(keyword)
+                                        && !targetSchool.contains(keyword)) {
+                                    return null;
+                                }
+                            }
+                        }
+                    }
+
+                    map.put("id", record.getId());
+                    map.put("realName", realName);
+                    map.put("userType", userType);
+                    map.put("activityTitle", activityTitle);
+                    map.put("targetSchool", targetSchool);
+                    map.put("result", record.getResult() == 1 ? "APPROVED" : "REJECTED");
+                    map.put("comment", record.getComment());
+                    map.put("createTime", record.getCreateTime());
+                    return map;
+                })
+                .filter(m -> m != null)
+                .collect(Collectors.toList());
+
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put("records", enrichedRecords);
+        resultMap.put("total", auditPage.getTotal());
+        resultMap.put("current", page);
+        resultMap.put("size", size);
+        return resultMap;
     }
 }

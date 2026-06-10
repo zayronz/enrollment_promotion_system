@@ -72,4 +72,14 @@ body {
 .router-leave-to {
   opacity: 0;
 }
+
+/* 富文本内容中的图片约束：防止溢出和拉伸 */
+.description-body img,
+.desc-content img,
+.content-full img,
+.content-text img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
 </style>

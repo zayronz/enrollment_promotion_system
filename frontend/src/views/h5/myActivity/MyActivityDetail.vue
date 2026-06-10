@@ -205,6 +205,7 @@ const router = useRouter()
   width: 24px;
   height: 24px;
   border-radius: 50%;
+  object-fit: cover;
 }
 .member-count {
   font-size: 13px;
@@ -258,6 +259,7 @@ const router = useRouter()
   width: 20px;
   height: 20px;
   border-radius: 50%;
+  object-fit: cover;
 }
 .summary-tip {
   font-size: 12px;

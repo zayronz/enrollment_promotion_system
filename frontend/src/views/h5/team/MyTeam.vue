@@ -157,6 +157,7 @@ const handleExit = () => {
   height: 32px;
   border-radius: 50%;
   border: 2px solid #fff;
+  object-fit: cover;
 }
 .member-table {
   border-top: 1px solid #f3f4f6;
@@ -208,6 +209,7 @@ const handleExit = () => {
   width: 20px;
   height: 20px;
   border-radius: 50%;
+  object-fit: cover;
 }
 .summary-time {
   font-size: 12px;

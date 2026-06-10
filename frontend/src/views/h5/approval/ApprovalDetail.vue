@@ -178,6 +178,7 @@ const handleCancel = () => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
+  object-fit: cover;
 }
 .flow-dot {
   position: absolute;
