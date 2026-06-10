@@ -74,6 +74,16 @@
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
+
+      <div class="menu-item" @click="router.push('/h5/change-password')">
+        <div class="menu-icon" style="background: #fef3c7;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        </div>
+        <div class="menu-info">
+          <span class="menu-name">修改密码</span>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
     </div>
 
     <div class="more-tip">移动端仅显示最新动态，更多内容查看PC端</div>

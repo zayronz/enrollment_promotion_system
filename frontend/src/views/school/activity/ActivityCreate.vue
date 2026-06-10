@@ -67,7 +67,7 @@
       <t-form-item label="自定义字段">
         <div class="custom-fields">
           <div v-for="(field, index) in form.customFields" :key="index" class="custom-field-item">
-            <t-input v-model="field.label" placeholder="字段显示名" style="width: 150px" />
+            <t-input v-model="field.label" placeholder="字段名称" style="width: 150px" />
             <t-select v-model="field.type" placeholder="字段类型" style="width: 120px; margin-left: 8px">
               <t-option label="单行文本" value="text" />
               <t-option label="多行文本" value="textarea" />
@@ -197,14 +197,10 @@ const buildSubmitData = () => {
     description: form.description,
     coverImage: form.coverImage || null,
     bannerUrl: form.bannerImages.length > 0 ? form.bannerImages[0] : null,
-    bannerUrls: form.bannerImages.length > 0 ? form.bannerImages : null,
     videoUrl: form.videoUrl || null,
-    customFields: form.customFields.map((field, index) => ({
-      name: field.label || `field_${index}`, // 使用 label 做 name，或者默认 field_xx
-      label: field.label,
-      type: field.type,
-      options: field.optionsStr ? field.optionsStr.split(',').map(s => s.trim()) : [],
-      required: field.required || false
+    customFields: form.customFields.map(f => ({
+      ...f,
+      options: f.optionsStr ? f.optionsStr.split(',') : []
     })),
     maxStudentPerSchool: form.maxStudentPerSchool,
     maxTeacherPerSchool: form.maxTeacherPerSchool,
@@ -228,14 +224,7 @@ const handleSubmit = async () => {
     MessagePlugin.success('保存成功')
     router.push('/school/activity/list')
   } catch (error) {
-    console.error('保存失败:', error)
-    if (error.response?.data?.message) {
-      MessagePlugin.error(error.response.data.message)
-    } else if (error.message) {
-      MessagePlugin.error(error.message)
-    } else {
-      MessagePlugin.error('保存失败，请重试')
-    }
+    console.error('保存失败', error)
   } finally {
     submitting.value = false
   }
@@ -259,14 +248,7 @@ const handlePublish = async () => {
       MessagePlugin.error('获取活动ID失败')
     }
   } catch (error) {
-    console.error('发布失败:', error)
-    if (error.response?.data?.message) {
-      MessagePlugin.error(error.response.data.message)
-    } else if (error.message) {
-      MessagePlugin.error(error.message)
-    } else {
-      MessagePlugin.error('发布失败，请重试')
-    }
+    console.error('发布失败', error)
   } finally {
     publishing.value = false
   }

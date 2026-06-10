@@ -73,6 +73,7 @@
             theme="primary"
             hover="color"
             class="attachment-link"
+            @click="downloadAttachment(file)"
           >
             <template #prefix-icon><FileIcon /></template>
             {{ file.name || file.fileName || '附件' + (index + 1) }}
@@ -92,6 +93,7 @@ import { activityApi } from '@/api/activity'
 import { registrationApi } from '@/api/registeration'
 import { TimeIcon, LocationIcon, UsergroupIcon, FileIcon } from 'tdesign-icons-vue-next'
 import { getFileUrl } from '@/utils/file'
+import { MessagePlugin } from 'tdesign-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -137,6 +139,15 @@ const fetchDetail = async () => {
 
 const goRegister = () => {
   router.push(`/student/register/${route.params.id}`)
+}
+
+const downloadAttachment = (file) => {
+  const url = file.url || file.fileUrl || file.path || file.filePath
+  if (url) {
+    window.open(getFileUrl(url), '_blank')
+  } else {
+    MessagePlugin.warning('附件无法下载')
+  }
 }
 
 const formatFullDate = (str) => {

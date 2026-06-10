@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
+import { isMobile } from '@/utils/device'
 
 const routes = [
     {
@@ -129,6 +130,7 @@ const routes = [
             { path: 'school/feedback-list', name: 'H5SchoolFeedbackList', component: () => import('@/views/h5/school/FeedbackList.vue') },
             // 个人中心
             { path: 'profile', name: 'H5Profile', component: () => import('@/views/common/Profile.vue') },
+            { path: 'change-password', name: 'H5ChangePassword', component: () => import('@/views/h5/profile/ChangePassword.vue') },
             { path: 'search-empty', name: 'H5SearchEmpty', component: () => import('@/views/h5/home/SearchEmpty.vue') },
             { path: 'network-error', name: 'H5NetworkError', component: () => import('@/views/h5/home/NetworkError.vue') },
             { path: 'no-content', name: 'H5NoContent', component: () => import('@/views/h5/home/NoContent.vue') }
@@ -154,6 +156,21 @@ router.beforeEach(async (to, from, next) => {
 
     // 判断是否为 H5 页面
     const isH5Page = to.path.startsWith('/h5')
+    
+    // 判断是否为移动端设备
+    const deviceIsMobile = isMobile()
+
+    // 如果访问PC登录页且是移动端设备，自动重定向到H5登录页
+    if (to.path === '/login' && deviceIsMobile && !userStore.isLoggedIn) {
+        next('/h5/login')
+        return
+    }
+
+    // 如果访问H5登录页且是桌面端设备，自动重定向到PC登录页
+    if (to.path === '/h5/login' && !deviceIsMobile && !userStore.isLoggedIn) {
+        next('/login')
+        return
+    }
 
     if (requiresAuth && !userStore.isLoggedIn) {
         // H5 页面未登录跳转到 H5 登录页

@@ -57,7 +57,7 @@
       </t-form-item>
 
       <t-form-item label="轮播图">
-        <FileUploader v-model="form.bannerImages" :multiple="true" accept="image/*" />
+        <FileUploader v-model="form.bannerImages" :multiple="false" accept="image/*" tip-text="支持上传一张Banner图片" />
       </t-form-item>
 
       <t-form-item label="宣传视频">
@@ -156,7 +156,7 @@ const form = reactive({
   registrationTime: [],
   description: '',
   coverImage: '',
-  bannerImages: [],
+  bannerImages: '',
   videoUrl: '',
   customFields: [],
   maxStudentPerSchool: 10,
@@ -200,7 +200,7 @@ const loadActivity = async () => {
     form.registrationTime = [data.registerStartTime || data.registrationStartTime, data.registerEndTime || data.registrationEndTime]
     form.description = data.description || data.content || ''
     form.coverImage = data.coverImage || ''
-    form.bannerImages = data.bannerUrls || (data.bannerUrl ? [data.bannerUrl] : [])
+    form.bannerImages = data.bannerUrl || data.bannerImages || ''
     form.videoUrl = data.videoUrl || ''
     form.customFields = (data.customFields || []).map(f => ({
       ...f,
@@ -219,19 +219,37 @@ const loadActivity = async () => {
 }
 
 const buildSubmitData = () => {
+  // 格式化日期时间：将 ISO 格式 (T分隔) 转换为后端期望的格式 (空格分隔)
+  const formatDateTime = (dt) => {
+    if (!dt) return null
+    if (typeof dt === 'string') {
+      // "2026-06-08T00:00:00" -> "2026-06-08 00:00:00"
+      return dt.replace('T', ' ')
+    }
+    if (dt instanceof Date) {
+      const y = dt.getFullYear()
+      const m = String(dt.getMonth() + 1).padStart(2, '0')
+      const d = String(dt.getDate()).padStart(2, '0')
+      const h = String(dt.getHours()).padStart(2, '0')
+      const min = String(dt.getMinutes()).padStart(2, '0')
+      const s = String(dt.getSeconds()).padStart(2, '0')
+      return `${y}-${m}-${d} ${h}:${min}:${s}`
+    }
+    return dt
+  }
+
   return {
     id: route.params.id,
     name: form.name,
     type: form.type,
     location: form.location,
-    activityStartTime: form.activityTime[0],
-    activityEndTime: form.activityTime[1],
-    registrationStartTime: form.registrationTime[0],
-    registrationEndTime: form.registrationTime[1],
+    activityStartTime: formatDateTime(form.activityTime[0]),
+    activityEndTime: formatDateTime(form.activityTime[1]),
+    registrationStartTime: formatDateTime(form.registrationTime[0]),
+    registrationEndTime: formatDateTime(form.registrationTime[1]),
     description: form.description,
     coverImage: form.coverImage,
-    bannerUrl: form.bannerImages[0],
-    bannerUrls: form.bannerImages,
+    bannerUrl: form.bannerImages || null,
     videoUrl: form.videoUrl,
     customFields: form.customFields.map(f => ({
       ...f,

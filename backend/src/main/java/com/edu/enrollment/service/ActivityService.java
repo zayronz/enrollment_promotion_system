@@ -8,7 +8,9 @@ import com.edu.enrollment.dto.ActivityDTO;
 import com.edu.enrollment.entity.ActivityEntity;
 import com.edu.enrollment.entity.UserEntity;
 import com.edu.enrollment.exception.BusinessException;
+import com.edu.enrollment.entity.AttachmentEntity;
 import com.edu.enrollment.mapper.ActivityMapper;
+import com.edu.enrollment.mapper.AttachmentMapper;
 import com.edu.enrollment.vo.ActivityVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ public class ActivityService {
 
     private final ActivityMapper activityMapper;
     private final UserService userService;
+    private final AttachmentMapper attachmentMapper;
 
     // 根据ID获取活动实体
     public ActivityEntity getById(Long id) {
@@ -66,7 +69,11 @@ public class ActivityService {
         if (entity == null) {
             throw new BusinessException("活动不存在");
         }
-        return toVO(entity);
+        ActivityVO vo = toVO(entity);
+        // 获取活动相关的附件
+        List<AttachmentEntity> attachments = attachmentMapper.selectByRelated(id, "activity");
+        vo.setAttachments(attachments.stream().map(this::toAttachmentVO).collect(Collectors.toList()));
+        return vo;
     }
 
     @Transactional
@@ -93,6 +100,20 @@ public class ActivityService {
         entity.setCreatorId(creatorId);
 
         activityMapper.insert(entity);
+
+        // 保存附件记录
+        if (dto.getAttachments() != null && !dto.getAttachments().isEmpty()) {
+            for (String filePath : dto.getAttachments()) {
+                AttachmentEntity attachment = new AttachmentEntity();
+                attachment.setFileName(filePath.substring(filePath.lastIndexOf('/') + 1));
+                attachment.setFilePath(filePath);
+                attachment.setRelatedId(entity.getId());
+                attachment.setRelatedType("activity");
+                attachment.setUploaderId(creatorId);
+                attachmentMapper.insert(attachment);
+            }
+        }
+
         return entity.getId();
     }
 
@@ -139,6 +160,24 @@ public class ActivityService {
         entity.setAutoGroup(dto.getAutoGroup() ? 1 : 0);
 
         activityMapper.updateById(entity);
+
+        // 更新附件记录
+        if (dto.getAttachments() != null) {
+            // 删除旧的附件记录
+            attachmentMapper.delete(new LambdaQueryWrapper<AttachmentEntity>()
+                    .eq(AttachmentEntity::getRelatedId, id)
+                    .eq(AttachmentEntity::getRelatedType, "activity"));
+            // 添加新的附件记录
+            for (String filePath : dto.getAttachments()) {
+                AttachmentEntity attachment = new AttachmentEntity();
+                attachment.setFileName(filePath.substring(filePath.lastIndexOf('/') + 1));
+                attachment.setFilePath(filePath);
+                attachment.setRelatedId(id);
+                attachment.setRelatedType("activity");
+                attachment.setUploaderId(userId);
+                attachmentMapper.insert(attachment);
+            }
+        }
     }
 
     @Transactional
@@ -200,5 +239,18 @@ public class ActivityService {
         vo.setAutoGroup(entity.getAutoGroup() == 1);
         vo.setShowOnHome(entity.getShowOnHome() != null ? entity.getShowOnHome() : 0);
         return vo;
+    }
+
+    private java.util.Map<String, Object> toAttachmentVO(AttachmentEntity entity) {
+        java.util.Map<String, Object> map = new java.util.HashMap<>();
+        map.put("id", entity.getId());
+        map.put("fileName", entity.getFileName());
+        map.put("filePath", entity.getFilePath());
+        map.put("fileSize", entity.getFileSize());
+        map.put("fileType", entity.getFileType());
+        // 设置完整的文件访问URL
+        String fullUrl = "/api/file/view/" + entity.getFilePath();
+        map.put("fullUrl", fullUrl);
+        return map;
     }
 }

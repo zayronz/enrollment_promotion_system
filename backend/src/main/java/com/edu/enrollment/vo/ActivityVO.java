@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class ActivityVO {
@@ -56,4 +57,6 @@ public class ActivityVO {
     private LocalDateTime updateTime;
 
     private Integer showOnHome;  // 0-不展示 1-展示
+
+private List<Map<String, Object>> attachments;  // 附件列表
 }
