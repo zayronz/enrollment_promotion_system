@@ -146,8 +146,26 @@ const fetchDetail = async () => {
   loading.value = true
   try {
     const res = await activityApi.getActivityDetail(id.value)
+    console.log('活动详情响应:', res)
     if (res.code === 200 && res.data) {
       detail.value = res.data
+      console.log('活动详情数据:', detail.value)
+      console.log('封面图:', detail.value.coverImage)
+      console.log('轮播图:', detail.value.bannerUrls)
+      console.log('视频:', detail.value.videoUrl)
+      
+      // 测试图片URL
+      if (detail.value.coverImage) {
+        console.log('封面图URL:', getFileUrl(detail.value.coverImage))
+      }
+      if (detail.value.bannerUrls && detail.value.bannerUrls.length > 0) {
+        detail.value.bannerUrls.forEach((url, idx) => {
+          console.log(`轮播图${idx + 1} URL:`, getFileUrl(url))
+        })
+      }
+      if (detail.value.videoUrl) {
+        console.log('视频URL:', getFileUrl(detail.value.videoUrl))
+      }
     }
   } catch (err) {
     console.error('获取活动详情失败', err)
