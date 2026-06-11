@@ -1,5 +1,7 @@
 package com.edu.enrollment.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.edu.enrollment.dto.AuditRequestDTO;
 import com.edu.enrollment.entity.ActivityEntity;
 import com.edu.enrollment.entity.AuditRecordEntity;
@@ -11,7 +13,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -111,5 +116,99 @@ public class AuditService {
             dto.setComment(comment);
             audit(dto, auditorId);
         }
+    }
+
+    /**
+     * 获取审核历史记录
+     */
+    public Map<String, Object> getAuditHistory(Long auditorId, Integer page, Integer size,
+                                                String keyword, Long activityId, String result) {
+        // 构建查询条件
+        LambdaQueryWrapper<AuditRecordEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AuditRecordEntity::getAuditorId, auditorId);
+
+        // 审核结果筛选
+        if (result != null && !result.isEmpty()) {
+            if ("APPROVED".equals(result)) {
+                wrapper.eq(AuditRecordEntity::getResult, 1);
+            } else if ("REJECTED".equals(result)) {
+                wrapper.eq(AuditRecordEntity::getResult, 2);
+            }
+        }
+
+        wrapper.orderByDesc(AuditRecordEntity::getCreateTime);
+
+        // 分页查询
+        Page<AuditRecordEntity> auditPage = new Page<>(page, size);
+        auditPage = auditRecordMapper.selectPage(auditPage, wrapper);
+
+        // 组装返回结果，附加报名和活动信息
+        List<Map<String, Object>> enrichedRecords = auditPage.getRecords().stream()
+                .map(audit -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", audit.getId());
+                    map.put("registrationId", audit.getRegistrationId());
+                    map.put("node", audit.getNode());
+                    map.put("auditorId", audit.getAuditorId());
+                    map.put("auditorName", audit.getAuditorName());
+                    map.put("result", audit.getResult());
+                    map.put("comment", audit.getComment());
+                    map.put("createTime", audit.getCreateTime());
+
+                    // 获取报名信息
+                    RegistrationEntity registration = registrationMapper.selectById(audit.getRegistrationId());
+                    if (registration != null) {
+                        map.put("targetSchool", registration.getTargetSchool());
+                        map.put("score", registration.getScore());
+
+                        // 获取活动信息
+                        ActivityEntity activity = activityService.getById(registration.getActivityId());
+                        if (activity != null) {
+                            map.put("activityId", activity.getId());
+                            map.put("activityName", activity.getName());
+                        }
+
+                        // 获取用户信息
+                        UserEntity user = userService.getById(registration.getUserId());
+                        if (user != null) {
+                            map.put("userId", user.getId());
+                            map.put("userName", user.getRealName());
+                            map.put("userType", "student".equals(user.getRole()) ? "学生" : "教师");
+                        }
+                    }
+
+                    return map;
+                })
+                .collect(Collectors.toList());
+
+        // 关键词过滤
+        List<Map<String, Object>> filtered = enrichedRecords;
+        if (keyword != null && !keyword.isEmpty()) {
+            String kw = keyword.toLowerCase();
+            filtered = enrichedRecords.stream()
+                    .filter(m -> {
+                        String activityName = (String) m.getOrDefault("activityName", "");
+                        String userName = (String) m.getOrDefault("userName", "");
+                        String school = (String) m.getOrDefault("targetSchool", "");
+                        return activityName.toLowerCase().contains(kw)
+                                || userName.toLowerCase().contains(kw)
+                                || school.toLowerCase().contains(kw);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        // 活动筛选
+        if (activityId != null) {
+            filtered = filtered.stream()
+                    .filter(m -> activityId.equals(m.get("activityId")))
+                    .collect(Collectors.toList());
+        }
+
+        Map<String, Object> pageResult = new HashMap<>();
+        pageResult.put("records", filtered);
+        pageResult.put("total", (long) filtered.size());
+        pageResult.put("current", page);
+        pageResult.put("size", size);
+        return pageResult;
     }
 }
