@@ -43,3 +43,7 @@ jwt:
 
 file:
   upload-path: D:/uploads/enrollment/
+
+logging:
+  level:
+    com.baomidou.mybatisplus.core.toolkit.support.ReflectLambdaMeta: error

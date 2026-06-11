@@ -15,10 +15,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -158,6 +161,191 @@ public class RegistrationService {
 
     public RegistrationEntity getDetail(Long id) {
         return registrationMapper.selectById(id);
+    }
+
+    public Map<String, Object> getRegistrationStatus(Long activityId, Long userId) {
+        ActivityEntity activity = activityService.getById(activityId);
+        if (activity == null) {
+            throw new BusinessException("活动不存在");
+        }
+
+        RegistrationEntity registration = registrationMapper.findByActivityAndUser(activityId, userId);
+        boolean registered = registration != null && registration.getStatus() != 4;
+        LocalDateTime now = LocalDateTime.now();
+        boolean inTime = activity.getRegistrationStartTime() != null
+                && activity.getRegistrationEndTime() != null
+                && !now.isBefore(activity.getRegistrationStartTime())
+                && !now.isAfter(activity.getRegistrationEndTime());
+        boolean published = activity.getStatus() == 1;
+        boolean canRegister = published && inTime && !registered;
+
+        String message = "可以报名";
+        if (registered) {
+            message = "您已报名过该活动";
+        } else if (!published) {
+            message = "活动未发布";
+        } else if (!inTime) {
+            message = "当前不在报名时间内";
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("registered", registered);
+        result.put("canRegister", canRegister);
+        result.put("registrationId", registered ? registration.getId() : null);
+        result.put("status", registered ? registration.getStatus() : null);
+        result.put("message", message);
+        return result;
+    }
+
+    public List<String> suggestSchools(Long activityId, String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return List.of();
+        }
+
+        String kw = keyword.trim();
+        Set<String> suggestions = new LinkedHashSet<>();
+        List<RegistrationEntity> registrations = registrationMapper.selectList(
+                new LambdaQueryWrapper<RegistrationEntity>()
+                        .eq(activityId != null, RegistrationEntity::getActivityId, activityId)
+                        .like(RegistrationEntity::getTargetSchool, kw)
+                        .orderByDesc(RegistrationEntity::getCreateTime)
+        );
+        registrations.stream()
+                .map(RegistrationEntity::getTargetSchool)
+                .filter(name -> name != null && !name.isBlank())
+                .limit(8)
+                .forEach(suggestions::add);
+
+        if (suggestions.size() < 8) {
+            suggestions.addAll(schoolNameNormalizer.suggest(kw, 8 - suggestions.size()));
+        }
+        return new ArrayList<>(suggestions).stream().limit(8).collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getMyTeams(Long userId) {
+        List<RegistrationEntity> myRegistrations = registrationMapper.selectList(
+                new LambdaQueryWrapper<RegistrationEntity>()
+                        .eq(RegistrationEntity::getUserId, userId)
+                        .isNotNull(RegistrationEntity::getGroupName)
+                        .ne(RegistrationEntity::getStatus, 4)
+                        .orderByDesc(RegistrationEntity::getCreateTime)
+        );
+
+        return myRegistrations.stream()
+                .map(reg -> {
+                    Map<String, Object> map = new HashMap<>();
+                    ActivityEntity activity = activityService.getById(reg.getActivityId());
+                    List<RegistrationEntity> members = registrationMapper.selectList(
+                            new LambdaQueryWrapper<RegistrationEntity>()
+                                    .eq(RegistrationEntity::getActivityId, reg.getActivityId())
+                                    .eq(RegistrationEntity::getGroupName, reg.getGroupName())
+                                    .ne(RegistrationEntity::getStatus, 4)
+                                    .orderByAsc(RegistrationEntity::getGroupRank)
+                    );
+                    map.put("registrationId", reg.getId());
+                    map.put("activityId", reg.getActivityId());
+                    map.put("activityTitle", activity != null ? activity.getName() : "-");
+                    map.put("groupName", reg.getGroupName());
+                    map.put("groupRank", reg.getGroupRank());
+                    map.put("targetSchool", reg.getTargetSchool());
+                    map.put("memberCount", members.size());
+                    map.put("members", members.stream().map(this::buildTeamMemberInfo).collect(Collectors.toList()));
+                    return map;
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<Map<String, Object>> getAvailableTeams(Long userId) {
+        List<RegistrationEntity> myRegistrations = registrationMapper.selectList(
+                new LambdaQueryWrapper<RegistrationEntity>()
+                        .eq(RegistrationEntity::getUserId, userId)
+                        .ne(RegistrationEntity::getStatus, 4)
+        );
+        Set<String> myTeamKeys = myRegistrations.stream()
+                .filter(reg -> reg.getGroupName() != null)
+                .map(reg -> reg.getActivityId() + "::" + reg.getGroupName())
+                .collect(Collectors.toSet());
+
+        List<RegistrationEntity> groupedRegistrations = registrationMapper.selectList(
+                new LambdaQueryWrapper<RegistrationEntity>()
+                        .isNotNull(RegistrationEntity::getGroupName)
+                        .ne(RegistrationEntity::getStatus, 4)
+                        .orderByDesc(RegistrationEntity::getCreateTime)
+        );
+
+        Map<String, List<RegistrationEntity>> grouped = groupedRegistrations.stream()
+                .collect(Collectors.groupingBy(reg -> reg.getActivityId() + "::" + reg.getGroupName()));
+
+        return grouped.entrySet().stream()
+                .filter(entry -> !myTeamKeys.contains(entry.getKey()))
+                .map(entry -> {
+                    RegistrationEntity first = entry.getValue().get(0);
+                    ActivityEntity activity = activityService.getById(first.getActivityId());
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("activityId", first.getActivityId());
+                    map.put("activityTitle", activity != null ? activity.getName() : "-");
+                    map.put("groupName", first.getGroupName());
+                    map.put("targetSchool", first.getTargetSchool());
+                    map.put("memberCount", entry.getValue().size());
+                    return map;
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void exitTeam(Long id, Long userId) {
+        RegistrationEntity registration = registrationMapper.selectById(id);
+        if (registration == null) {
+            throw new BusinessException("报名记录不存在");
+        }
+        if (!registration.getUserId().equals(userId)) {
+            throw new BusinessException("只能退出自己的招宣组");
+        }
+        registration.setGroupName(null);
+        registration.setGroupRank(null);
+        registrationMapper.updateById(registration);
+    }
+
+    @Transactional
+    public void joinTeam(Long id, String groupName, Long userId) {
+        if (groupName == null || groupName.trim().isEmpty()) {
+            throw new BusinessException("请选择要加入的招宣组");
+        }
+        RegistrationEntity registration = registrationMapper.selectById(id);
+        if (registration == null) {
+            throw new BusinessException("报名记录不存在");
+        }
+        if (!registration.getUserId().equals(userId)) {
+            throw new BusinessException("只能修改自己的招宣组");
+        }
+
+        registration.setGroupName(groupName.trim());
+        Integer maxRank = registrationMapper.selectList(
+                        new LambdaQueryWrapper<RegistrationEntity>()
+                                .eq(RegistrationEntity::getActivityId, registration.getActivityId())
+                                .eq(RegistrationEntity::getGroupName, groupName.trim())
+                                .isNotNull(RegistrationEntity::getGroupRank)
+                ).stream()
+                .map(RegistrationEntity::getGroupRank)
+                .filter(rank -> rank != null)
+                .max(Integer::compareTo)
+                .orElse(0);
+        registration.setGroupRank(maxRank + 1);
+        registrationMapper.updateById(registration);
+    }
+
+    private Map<String, Object> buildTeamMemberInfo(RegistrationEntity registration) {
+        UserEntity user = userService.getById(registration.getUserId());
+        Map<String, Object> map = new HashMap<>();
+        map.put("registrationId", registration.getId());
+        map.put("userId", registration.getUserId());
+        map.put("realName", user != null ? user.getRealName() : "-");
+        map.put("role", user != null ? user.getRole() : "-");
+        map.put("targetSchool", registration.getTargetSchool());
+        map.put("groupRank", registration.getGroupRank());
+        map.put("phone", user != null ? user.getPhone() : null);
+        map.put("email", user != null ? user.getEmail() : null);
+        return map;
     }
 
     @Transactional
