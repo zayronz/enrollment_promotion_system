@@ -38,4 +38,10 @@ public class FeedbackController {
                                    @RequestParam(required = false) Long activityId) {
         return ResultVO.success(feedbackService.getMyFeedbacks(userId, activityId));
     }
+
+    @GetMapping("/college")
+    public ResultVO<?> collegeFeedbacks(@CurrentUserId Long userId,
+                                        @RequestParam(required = false) Long activityId) {
+        return ResultVO.success(feedbackService.getCollegeFeedbacks(userId, activityId));
+    }
 }

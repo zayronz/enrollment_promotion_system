@@ -42,14 +42,38 @@
         </div>
 
         <!-- Register button -->
-        <div v-if="canRegister" class="register-area">
+        <div class="register-area">
           <t-button
+            v-if="alreadyRegistered"
+            theme="default"
+            size="large"
+            disabled
+          >
+            已报名
+          </t-button>
+          <t-button
+            v-else-if="activity.status === 2 || registrationStatus === 'ended'"
+            theme="default"
+            size="large"
+            disabled
+          >
+            报名已结束
+          </t-button>
+          <t-button
+            v-else-if="registrationStatus === 'not_started'"
+            theme="default"
+            size="large"
+            disabled
+          >
+            报名未开始
+          </t-button>
+          <t-button
+            v-else-if="canRegister"
             theme="primary"
             size="large"
-            :disabled="alreadyRegistered || activity.status === 2"
             @click="goRegister"
           >
-            {{ alreadyRegistered ? '已报名' : activity.status === 2 ? '已结束' : '立即报名' }}
+            立即报名
           </t-button>
         </div>
       </div>
@@ -111,6 +135,20 @@ const canRegister = computed(() => {
     if (now > end) return false
   }
   return true
+})
+
+const registrationStatus = computed(() => {
+  if (!activity.value) return 'unavailable'
+  const now = Date.now()
+  if (activity.value.registrationStartTime) {
+    const start = new Date(activity.value.registrationStartTime).getTime()
+    if (now < start) return 'not_started'
+  }
+  if (activity.value.registrationEndTime) {
+    const end = new Date(activity.value.registrationEndTime).getTime()
+    if (now > end) return 'ended'
+  }
+  return 'open'
 })
 
 const fetchDetail = async () => {

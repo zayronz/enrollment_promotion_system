@@ -109,11 +109,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { feedbackApi } from '@/api/feedback'
 import { registrationApi } from '@/api/registeration'
-import { activityApi } from '@/api/activity'
-import { getToken } from '@/utils/auth'
 import { AddIcon } from 'tdesign-icons-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
 import RichTextEditor from '@/components/business/RichTextEditor.vue'
@@ -137,11 +135,6 @@ const pagination = ref({
   total: 0
 })
 
-const uploadUrl = '/api/file/upload'
-const uploadHeaders = computed(() => ({
-  Authorization: `Bearer ${getToken()}`
-}))
-
 const submitForm = ref({
   activityId: '',
   title: '',
@@ -155,7 +148,7 @@ const submitRules = {
 }
 
 const columns = [
-  { colKey: 'id', title: '编号', width: 80 },
+  { colKey: 'rowIndex', title: '编号', width: 80, cell: (_, { rowIndex }) => rowIndex + 1 },
   { colKey: 'activityTitle', title: '所属活动', ellipsis: true, width: 180 },
   { colKey: 'title', title: '标题', ellipsis: true },
   { colKey: 'content', title: '内容摘要', width: 200 },
@@ -167,8 +160,8 @@ const fetchFeedbacks = async () => {
   loading.value = true
   try {
     const res = await feedbackApi.getMyFeedbacks(activityFilter.value || undefined)
-    records.value = res.data?.records || []
-    pagination.value.total = res.data?.total || 0
+    records.value = res.data || []
+    pagination.value.total = (res.data || []).length
   } catch (err) {
     console.error('获取反馈列表失败', err)
   } finally {
@@ -178,19 +171,14 @@ const fetchFeedbacks = async () => {
 
 const fetchActivityOptions = async () => {
   try {
-    const [activityRes, regRes] = await Promise.all([
-      activityApi.getActivityList({ page: 1, size: 100 }),
-      registrationApi.getMyRegistrations()
-    ])
-    const allActivities = activityRes.data?.records || []
+    const regRes = await registrationApi.getMyRegistrations({ page: 1, size: 1000 })
     const approvedRegs = (regRes.data?.records || []).filter(
       r => r.status === 1 || r.status === 2
     )
 
-    activityOptions.value = allActivities.map(a => ({ value: a.id, label: a.name }))
-    approvedActivities.value = allActivities
-      .filter(a => approvedRegs.some(r => r.activityId === a.id))
-      .map(a => ({ value: a.id, label: a.title }))
+    // 只显示已通过审核的报名对应的活动
+    activityOptions.value = approvedRegs.map(r => ({ value: r.activityId, label: r.activityTitle }))
+    approvedActivities.value = activityOptions.value
   } catch (err) {
     console.error('获取活动选项失败', err)
   }
@@ -218,9 +206,14 @@ const handleSubmitFeedback = async () => {
   if (valid !== true) return
 
   try {
-    const attachmentUrls = Array.isArray(submitFileList.value) 
-      ? submitFileList.value.join(',') 
-      : ''
+    let attachmentUrls = ''
+    if (submitFileList.value) {
+      if (Array.isArray(submitFileList.value)) {
+        attachmentUrls = submitFileList.value.join(',')
+      } else if (typeof submitFileList.value === 'string') {
+        attachmentUrls = submitFileList.value
+      }
+    }
     
     await feedbackApi.submit({
       activityId: submitForm.value.activityId,

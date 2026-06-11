@@ -54,6 +54,10 @@ public class AuditService {
 
             // 通过：判断是否还有下一级审批
             if (hasNextNode(registration.getCurrentNode(), activity)) {
+                // 学院审核通过，设置状态为1（学院通过）
+                if ("college_audit".equals(registration.getCurrentNode())) {
+                    registration.setStatus(1); // 学院通过
+                }
                 registration.setCurrentNode(getNextNode(registration.getCurrentNode()));
             } else {
                 registration.setStatus(2); // 全部通过
@@ -151,7 +155,8 @@ public class AuditService {
                     map.put("node", audit.getNode());
                     map.put("auditorId", audit.getAuditorId());
                     map.put("auditorName", audit.getAuditorName());
-                    map.put("result", audit.getResult());
+                    // 转换审核结果为字符串
+                    map.put("result", audit.getResult() == 1 ? "APPROVED" : "REJECTED");
                     map.put("comment", audit.getComment());
                     map.put("createTime", audit.getCreateTime());
 
@@ -166,6 +171,7 @@ public class AuditService {
                         if (activity != null) {
                             map.put("activityId", activity.getId());
                             map.put("activityName", activity.getName());
+                            map.put("activityTitle", activity.getName()); // 前端期望的字段名
                         }
 
                         // 获取用户信息
@@ -173,7 +179,8 @@ public class AuditService {
                         if (user != null) {
                             map.put("userId", user.getId());
                             map.put("userName", user.getRealName());
-                            map.put("userType", "student".equals(user.getRole()) ? "学生" : "教师");
+                            map.put("realName", user.getRealName()); // 前端期望的字段名
+                            map.put("userType", "student".equals(user.getRole()) ? "STUDENT" : "TEACHER");
                         }
                     }
 
@@ -188,10 +195,14 @@ public class AuditService {
             filtered = enrichedRecords.stream()
                     .filter(m -> {
                         String activityName = (String) m.getOrDefault("activityName", "");
+                        String activityTitle = (String) m.getOrDefault("activityTitle", "");
                         String userName = (String) m.getOrDefault("userName", "");
+                        String realName = (String) m.getOrDefault("realName", "");
                         String school = (String) m.getOrDefault("targetSchool", "");
                         return activityName.toLowerCase().contains(kw)
+                                || activityTitle.toLowerCase().contains(kw)
                                 || userName.toLowerCase().contains(kw)
+                                || realName.toLowerCase().contains(kw)
                                 || school.toLowerCase().contains(kw);
                     })
                     .collect(Collectors.toList());

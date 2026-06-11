@@ -218,11 +218,12 @@ const handleSubmit = async (e) => {
   if (valid !== true) return
 
   // Confirm dialog
-  DialogPlugin.confirm({
+  const dialog = DialogPlugin.confirm({
     header: '确认提交',
     body: '确定要提交此报名吗？提交后需等待审核。',
     confirmBtn: '确认提交',
     onConfirm: async () => {
+      dialog.destroy()
       submitting.value = true
       try {
         const payload = {
@@ -243,6 +244,9 @@ const handleSubmit = async (e) => {
       } finally {
         submitting.value = false
       }
+    },
+    onCancel: () => {
+      dialog.destroy()
     }
   })
 }

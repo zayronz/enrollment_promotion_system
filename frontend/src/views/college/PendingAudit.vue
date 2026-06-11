@@ -198,7 +198,7 @@ const handleAudit = (id, result) => {
 
 const doSingleAudit = async (id, result) => {
   try {
-    await auditApi.audit({ registrationId: id, passed: result === 'APPROVED', comment: '' })
+    await auditApi.audit({ registrationId: id, passed: result === 'APPROVED', comment: auditComment.value || '' })
     MessagePlugin.success('操作成功')
     dialogVisible.value = false
     fetchData()

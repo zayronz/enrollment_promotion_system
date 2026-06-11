@@ -156,17 +156,51 @@
             </t-timeline-item>
           </t-timeline>
         </div>
+
+        <!-- Feedback submit button -->
+        <div v-if="canSubmitFeedback" class="feedback-submit">
+          <t-button theme="primary" @click="openFeedbackModal">提交反馈</t-button>
+        </div>
       </div>
+    </t-dialog>
+
+    <!-- Feedback modal -->
+    <t-dialog
+      v-model:visible="feedbackModalVisible"
+      header="提交工作反馈"
+      width="500px"
+      @confirm="submitFeedback"
+      @cancel="feedbackModalVisible = false"
+    >
+      <t-form :model="feedbackForm" ref="feedbackFormRef">
+        <t-form-item label="反馈标题" name="title" :rules="[{ required: true, message: '请输入反馈标题' }]">
+          <t-input v-model="feedbackForm.title" placeholder="请输入反馈标题" />
+        </t-form-item>
+        <t-form-item label="反馈类型" name="type">
+          <t-select v-model="feedbackForm.type" placeholder="请选择反馈类型">
+            <t-option value="WORK" label="工作反馈" />
+            <t-option value="SUGGESTION" label="建议" />
+            <t-option value="COMPLAINT" label="投诉" />
+          </t-select>
+        </t-form-item>
+        <t-form-item label="反馈内容" name="content" :rules="[{ required: true, message: '请输入反馈内容' }]">
+          <t-textarea v-model="feedbackForm.content" placeholder="请输入反馈内容" :rows="4" />
+        </t-form-item>
+        <t-form-item label="附件上传">
+          <FileUploader v-model="feedbackFileList" :multiple="true" />
+        </t-form-item>
+      </t-form>
     </t-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { registrationApi } from '@/api/registeration'
 import { feedbackApi } from '@/api/feedback'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { getFileUrl } from '@/utils/file'
+import FileUploader from '@/components/business/FileUploader.vue'
 
 const records = ref([])
 const loading = ref(false)
@@ -179,6 +213,14 @@ const feedbacks = ref([])
 const activityDetail = ref(null)
 const teamMembers = ref([])
 const auditProgress = ref('')
+const feedbackModalVisible = ref(false)
+const feedbackFormRef = ref(null)
+const feedbackFileList = ref([])
+const feedbackForm = ref({
+  title: '',
+  type: 'WORK',
+  content: ''
+})
 
 const pagination = ref({
   current: 1,
@@ -256,6 +298,52 @@ const handleWithdraw = async (id) => {
     fetchRegistrations()
   } catch (err) {
     console.error('撤销失败', err)
+  }
+}
+
+const canSubmitFeedback = computed(() => {
+  return currentRecord.value && (currentRecord.value.status === 1 || currentRecord.value.status === 2)
+})
+
+const openFeedbackModal = () => {
+  feedbackForm.value = {
+    title: '',
+    type: 'WORK',
+    content: ''
+  }
+  feedbackFileList.value = []
+  feedbackModalVisible.value = true
+}
+
+const submitFeedback = async () => {
+  if (!feedbackFormRef.value) return
+  
+  const valid = await feedbackFormRef.value.validate()
+  if (valid !== true) return
+  
+  try {
+    let attachmentUrls = ''
+    if (feedbackFileList.value) {
+      if (Array.isArray(feedbackFileList.value)) {
+        attachmentUrls = feedbackFileList.value.join(',')
+      } else if (typeof feedbackFileList.value === 'string') {
+        attachmentUrls = feedbackFileList.value
+      }
+    }
+    
+    await feedbackApi.submit({
+      activityId: currentRecord.value.activityId,
+      title: feedbackForm.value.title,
+      type: feedbackForm.value.type,
+      content: feedbackForm.value.content,
+      attachmentUrls
+    })
+    MessagePlugin.success('反馈提交成功')
+    feedbackModalVisible.value = false
+    showDetail(currentRecord.value)
+  } catch (err) {
+    console.error('提交反馈失败', err)
+    MessagePlugin.error(err.response?.data?.message || '提交反馈失败')
   }
 }
 

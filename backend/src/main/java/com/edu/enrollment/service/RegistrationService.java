@@ -303,7 +303,7 @@ public class RegistrationService {
         detail.put("auditProgress", getAuditProgress(registration));
         detail.put("auditLogs", buildAuditLogs(registration.getId()));
         detail.put("teamMembers", buildTeamMembers(registration));
-        detail.put("feedbacks", registration.getStatus() == 2 ? buildFeedbacks(registration.getActivityId()) : List.of());
+        detail.put("feedbacks", (registration.getStatus() == 1 || registration.getStatus() == 2) ? buildFeedbacks(registration.getActivityId()) : List.of());
 
         Map<String, Object> formData = new HashMap<>();
         if (registration.getFormData() != null && !registration.getFormData().isBlank()) {
