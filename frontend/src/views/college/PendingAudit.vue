@@ -157,7 +157,7 @@ const fetchActivities = async () => {
     const res = await activityApi.getActivityList({ page: 1, size: 100 })
     activityOptions.value = (res.data?.records || []).map(a => ({
       value: a.id,
-      label: a.title
+      label: a.name || a.title
     }))
   } catch (err) {
     console.error(err)
