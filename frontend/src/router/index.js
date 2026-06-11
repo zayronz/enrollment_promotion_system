@@ -162,6 +162,8 @@ const routes = [
             // 学校端 H5 路由
             { path: 'school/dashboard', name: 'H5SchoolDashboard', component: () => import('@/views/h5/school/Dashboard.vue') },
             { path: 'school/activity-list', name: 'H5SchoolActivityList', component: () => import('@/views/h5/school/ActivityList.vue') },
+            { path: 'school/activity-create', name: 'H5SchoolActivityCreate', component: () => import('@/views/h5/school/ActivityCreate.vue') },
+            { path: 'school/activity-edit/:id', name: 'H5SchoolActivityEdit', component: () => import('@/views/h5/school/ActivityEdit.vue') },
             { path: 'school/audit-pending', name: 'H5SchoolAuditPending', component: () => import('@/views/h5/school/AuditPending.vue') },
             { path: 'school/user-list', name: 'H5SchoolUserList', component: () => import('@/views/h5/school/UserList.vue') },
             { path: 'school/feedback-list', name: 'H5SchoolFeedbackList', component: () => import('@/views/h5/school/FeedbackList.vue') },
@@ -228,6 +230,8 @@ const toMobilePath = (path) => {
         '/college/feedback': '/h5/college/feedback',
         '/school/dashboard': '/h5/school/dashboard',
         '/school/activity/list': '/h5/school/activity-list',
+        '/school/activity/create': '/h5/school/activity-create',
+        '/school/activity/edit': '/h5/school/activity-edit',
         '/school/audit/pending': '/h5/school/audit-pending',
         '/school/user/list': '/h5/school/user-list',
         '/school/feedback/list': '/h5/school/feedback-list',
@@ -246,6 +250,7 @@ const toMobilePath = (path) => {
     if (path.startsWith('/teacher/test/result/')) return path.replace('/teacher/test/result/', '/h5/test/result/')
     if (path.startsWith('/student/my-activity/')) return path.replace('/student/my-activity/', '/h5/my-activity/')
     if (path.startsWith('/teacher/my-activity/')) return path.replace('/teacher/my-activity/', '/h5/my-activity/')
+    if (path.startsWith('/school/activity/edit/')) return path.replace('/school/activity/edit/', '/h5/school/activity-edit/')
     return null
 }
 

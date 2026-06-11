@@ -245,9 +245,14 @@ const handleSubmit = async () => {
   if (valid !== true) return
 
   try {
-    const attachmentUrls = Array.isArray(submitFileList.value) 
-      ? submitFileList.value.join(',') 
-      : ''
+    let attachmentUrls = ''
+    if (submitFileList.value) {
+      if (Array.isArray(submitFileList.value)) {
+        attachmentUrls = submitFileList.value.join(',')
+      } else if (typeof submitFileList.value === 'string') {
+        attachmentUrls = submitFileList.value
+      }
+    }
     
     await feedbackApi.submit({
       activityId: submitForm.value.activityId,

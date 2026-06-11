@@ -27,18 +27,22 @@ public class FeedbackService {
 
     @Transactional
     public Long submit(FeedbackSubmitDTO dto, Long userId) {
-        // 校验是否已报名且审批通过（状态1=学院通过，状态2=全部通过）
-        RegistrationEntity registration = registrationMapper.findByActivityAndUser(dto.getActivityId(), userId);
-        if (registration == null || registration.getStatus() != 1 && registration.getStatus() != 2) {
-            throw new BusinessException("只有报名审批通过的用户才能提交反馈");
-        }
-
-        LocalDateTime feedbackDeadline = activityService.getFeedbackDeadline(dto.getActivityId());
-        if (feedbackDeadline != null && LocalDateTime.now().isAfter(feedbackDeadline)) {
-            throw new BusinessException("已过反馈时间，无法提交反馈");
-        }
-
         UserEntity user = userService.getById(userId);
+        String userRole = user.getRole();
+        boolean isAdmin = "COLLEGE".equals(userRole) || "SCHOOL".equals(userRole);
+
+        // 非管理员角色：校验是否已报名且审批通过（状态1=学院通过，状态2=全部通过）
+        if (!isAdmin) {
+            RegistrationEntity registration = registrationMapper.findByActivityAndUser(dto.getActivityId(), userId);
+            if (registration == null || (registration.getStatus() != 1 && registration.getStatus() != 2)) {
+                throw new BusinessException("只有报名审批通过的用户才能提交反馈");
+            }
+
+            LocalDateTime feedbackDeadline = activityService.getFeedbackDeadline(dto.getActivityId());
+            if (feedbackDeadline != null && LocalDateTime.now().isAfter(feedbackDeadline)) {
+                throw new BusinessException("已过反馈时间，无法提交反馈");
+            }
+        }
 
         FeedbackEntity feedback = new FeedbackEntity();
         feedback.setActivityId(dto.getActivityId());

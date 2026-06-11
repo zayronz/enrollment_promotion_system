@@ -235,10 +235,17 @@ const rules = {
 }
 
 const formatDate = (date) => {
-  if (!date) return ''
-  if (typeof date === 'string') return date
-  // 处理日期对象
-  const d = new Date(date)
+  if (!date) return null
+  let d
+  if (typeof date === 'string') {
+    // 解析 ISO 格式字符串如 "2026-06-11T01:00:00+08:00"
+    d = new Date(date)
+  } else if (date instanceof Date) {
+    d = date
+  } else {
+    d = new Date(date)
+  }
+  if (isNaN(d.getTime())) return null
   const year = d.getFullYear()
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')

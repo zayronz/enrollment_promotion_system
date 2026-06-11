@@ -291,13 +291,15 @@ public class ActivityService {
         }
 
         if ((dto.getAllowedCollegeIds() != null && !dto.getAllowedCollegeIds().isEmpty())
-                || (dto.getAllowedUsernames() != null && !dto.getAllowedUsernames().isEmpty())) {
+                || (dto.getAllowedUsernames() != null && !dto.getAllowedUsernames().isEmpty())
+                || (dto.getAllowedRoles() != null && !dto.getAllowedRoles().isEmpty())) {
             JSONObject audience = new JSONObject();
             audience.set("type", "audience_rule");
             audience.set("name", "__audience_rule__");
             audience.set("label", "参与人群");
             audience.set("allowedCollegeIds", dto.getAllowedCollegeIds());
             audience.set("allowedUsernames", dto.getAllowedUsernames());
+            audience.set("allowedRoles", dto.getAllowedRoles());
             fields.add(audience);
         }
 
@@ -357,6 +359,7 @@ public class ActivityService {
             if ("audience_rule".equals(field.getStr("type"))) {
                 vo.setAllowedCollegeIds(toLongList(field.getJSONArray("allowedCollegeIds")));
                 vo.setAllowedUsernames(toStringList(field.getJSONArray("allowedUsernames")));
+                vo.setAllowedRoles(toStringList(field.getJSONArray("allowedRoles")));
             }
             if ("feedback_rule".equals(field.getStr("type"))) {
                 String deadline = field.getStr("feedbackDeadline");
@@ -393,12 +396,20 @@ public class ActivityService {
             if ("audience_rule".equals(field.getStr("type"))) {
                 List<Long> collegeIds = toLongList(field.getJSONArray("allowedCollegeIds"));
                 List<String> usernames = toStringList(field.getJSONArray("allowedUsernames"));
+                List<String> roles = toStringList(field.getJSONArray("allowedRoles"));
+
                 boolean hasCollegeRule = collegeIds != null && !collegeIds.isEmpty();
                 boolean hasUserRule = usernames != null && !usernames.isEmpty();
+                boolean hasRoleRule = roles != null && !roles.isEmpty();
+
                 boolean collegeMatched = hasCollegeRule && user.getCollegeId() != null && collegeIds.contains(user.getCollegeId());
                 boolean userMatched = hasUserRule && usernames.stream().anyMatch(name ->
                         name.equalsIgnoreCase(user.getUsername()) || name.equals(user.getRealName()));
-                return (!hasCollegeRule && !hasUserRule) || collegeMatched || userMatched;
+                boolean roleMatched = !hasRoleRule || (user.getRole() != null && roles.stream().anyMatch(r -> r.equalsIgnoreCase(user.getRole())));
+
+                // 学院/用户名规则未配置时走"全部通过"；角色规则未配置时也全部通过
+                boolean basePass = (!hasCollegeRule && !hasUserRule) || collegeMatched || userMatched;
+                return basePass && roleMatched;
             }
         }
         return true;

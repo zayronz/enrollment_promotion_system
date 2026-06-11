@@ -57,6 +57,8 @@ public class ActivityDTO {
     // 参与人群规则：为空表示不限制
     private List<Long> allowedCollegeIds;
     private List<String> allowedUsernames;
+    // 允许参与的角色（STUDENT/TEACHER）：为空表示所有角色都可以参与
+    private List<String> allowedRoles;
 
     // 反馈提交截止时间：超过后不可提交反馈
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

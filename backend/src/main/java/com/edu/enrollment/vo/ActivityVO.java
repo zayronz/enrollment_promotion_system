@@ -64,6 +64,7 @@ public class ActivityVO {
 
     private List<Long> allowedCollegeIds;     // 允许参与学院
     private List<String> allowedUsernames;    // 指定允许参与用户（用户名或姓名）
+    private List<String> allowedRoles;        // 允许参与角色（STUDENT/TEACHER）
     private LocalDateTime feedbackDeadline;   // 反馈提交截止时间
 
     private List<Map<String, Object>> attachments;  // 附件列表

@@ -1,9 +1,9 @@
 <template>
   <div class="h5-my-feedbacks">
     <H5NavBar title="我的反馈" />
-    
+
     <t-loading v-if="loading" text="加载中..." size="small" class="loading-wrap" />
-    
+
     <div v-else class="content-wrap">
       <!-- 顶部过滤和提交 -->
       <div class="top-bar">
@@ -42,9 +42,13 @@
           <div class="item-content">
             <div v-html="item.content?.substring(0, 100) + (item.content?.length > 100 ? '...' : '')" />
           </div>
+          <div v-if="getAttachments(item).length > 0" class="item-attachments">
+            <span class="attachment-icon">📎</span>
+            <span>{{ getAttachments(item).length }}个附件</span>
+          </div>
         </div>
       </div>
-      
+
       <div v-else class="empty-wrap">
         <div class="empty-text">暂无反馈记录</div>
       </div>
@@ -59,9 +63,9 @@
       <div class="submit-content">
         <div class="popup-header">
           <div class="popup-title">提交反馈</div>
-          <t-icon name="close" size="20" class="close-icon" @click="submitVisible = false" />
+          <div class="close-btn" @click="closeSubmitDialog">×</div>
         </div>
-        
+
         <div class="popup-body">
           <t-form ref="submitFormRef" :data="submitForm" :rules="submitRules" label-width="auto">
             <t-form-item label="所属活动" name="activityId">
@@ -84,26 +88,18 @@
             <t-form-item label="反馈内容" name="content">
               <t-textarea
                 v-model="submitForm.content"
-                placeholder="请输入工作反馈内容..."
+                placeholder="请输入反馈内容..."
                 :autosize="{ minRows: 5, maxRows: 12 }"
               />
             </t-form-item>
             <t-form-item label="附件上传">
-              <t-upload
-                v-model="submitFileList"
-                :action="uploadUrl"
-                :headers="uploadHeaders"
-                :max="5"
-                :size-limit="{ size: 20, unit: 'MB' }"
-                theme="file-flow"
-                :abridge-name="[8, 6]"
-              />
+              <FileUploader v-model="submitFileList" :multiple="true" />
             </t-form-item>
           </t-form>
         </div>
 
         <div class="popup-footer">
-          <t-button theme="default" size="large" block @click="submitVisible = false">
+          <t-button theme="default" size="large" block @click="closeSubmitDialog">
             取消
           </t-button>
           <t-button theme="primary" size="large" block :loading="submitting" @click="handleSubmitFeedback">
@@ -122,9 +118,9 @@
       <div v-if="currentFeedback" class="detail-content">
         <div class="detail-header">
           <div class="detail-title">反馈详情</div>
-          <t-icon name="close" size="20" class="close-icon" @click="detailVisible = false" />
+          <div class="close-btn" @click="closeDetailDialog">×</div>
         </div>
-        
+
         <div class="detail-body">
           <div class="info-section">
             <div class="info-item">
@@ -140,10 +136,24 @@
               <span class="info-val">{{ currentFeedback.title || '-' }}</span>
             </div>
           </div>
-          
+
           <div class="feedback-body">
             <div class="section-title">反馈内容</div>
             <div class="content-full" v-html="currentFeedback.content || '暂无内容'" />
+          </div>
+
+          <div v-if="getAttachments(currentFeedback).length > 0" class="attachment-section">
+            <div class="section-title">附件列表</div>
+            <div
+              v-for="(url, index) in getAttachments(currentFeedback)"
+              :key="index"
+              class="attachment-item"
+              @click="downloadFile(url)"
+            >
+              <span class="attachment-icon">📎</span>
+              <span class="file-name">{{ getFileName(url) || '附件' + (index + 1) }}</span>
+              <t-icon name="download" size="16" class="download-icon" />
+            </div>
           </div>
         </div>
       </div>
@@ -155,8 +165,10 @@
 import { ref, onMounted } from 'vue'
 import { feedbackApi } from '@/api/feedback'
 import { registrationApi } from '@/api/registeration'
+import { getFileUrl } from '@/utils/file'
 import { MessagePlugin } from 'tdesign-vue-next'
 import H5NavBar from '../components/H5NavBar.vue'
+import FileUploader from '@/components/business/FileUploader.vue'
 
 const loading = ref(false)
 const records = ref([])
@@ -183,13 +195,56 @@ const submitRules = {
   content: [{ required: true, message: '请输入反馈内容' }]
 }
 
+const getAttachments = (row) => {
+  if (!row) return []
+  if (Array.isArray(row.attachments) && row.attachments.length > 0) {
+    return row.attachments.map(a => getFileUrl(a.url || a.fileUrl || a))
+  }
+  if (row.attachmentUrls) {
+    if (Array.isArray(row.attachmentUrls)) {
+      return row.attachmentUrls.filter(Boolean).map(url => getFileUrl(url))
+    }
+    if (typeof row.attachmentUrls === 'string') {
+      return row.attachmentUrls.split(',').filter(Boolean).map(url => getFileUrl(url.trim()))
+    }
+  }
+  return []
+}
+
+const getFileName = (url) => {
+  if (!url) return ''
+  try {
+    const parts = url.split('/')
+    const filename = parts[parts.length - 1].split('?')[0]
+    return filename.length > 40 ? filename.substring(0, 37) + '...' : filename
+  } catch {
+    return '附件'
+  }
+}
+
+const downloadFile = (url) => {
+  if (url) {
+    window.open(url)
+  } else {
+    MessagePlugin.info('附件地址无效')
+  }
+}
+
 const fetchFeedbacks = async () => {
   loading.value = true
   try {
     const res = await feedbackApi.getMyFeedbacks(activityFilter.value || undefined)
-    records.value = res.data?.records || []
+    // 兼容多种返回格式：直接数组 或 {records: []}
+    if (Array.isArray(res.data)) {
+      records.value = res.data
+    } else if (res.data?.records && Array.isArray(res.data.records)) {
+      records.value = res.data.records
+    } else {
+      records.value = []
+    }
   } catch (err) {
     console.error('获取反馈列表失败', err)
+    records.value = []
   } finally {
     loading.value = false
   }
@@ -198,12 +253,13 @@ const fetchFeedbacks = async () => {
 const fetchActivityOptions = async () => {
   try {
     const regRes = await registrationApi.getMyRegistrations({ page: 1, size: 1000 })
-    const approvedRegs = (regRes.data?.records || []).filter(
+    const approvedRegs = (regRes.data?.records || regRes.data || []).filter(
       r => r.status === 1 || r.status === 2
     )
-
-    // 只显示已通过审核的报名对应的活动
-    activityOptions.value = approvedRegs.map(r => ({ value: r.activityId, label: r.activityTitle }))
+    activityOptions.value = approvedRegs.map(r => ({
+      value: r.activityId,
+      label: r.activityTitle || r.activityName || '活动'
+    }))
     approvedActivities.value = activityOptions.value
   } catch (err) {
     console.error('获取活动选项失败', err)
@@ -220,23 +276,41 @@ const showSubmitDialog = () => {
   submitVisible.value = true
 }
 
+const closeSubmitDialog = () => {
+  submitVisible.value = false
+}
+
+const closeDetailDialog = () => {
+  detailVisible.value = false
+}
+
 const handleSubmitFeedback = async () => {
   const valid = await submitFormRef.value.validate()
   if (valid !== true) return
 
   submitting.value = true
   try {
+    let attachmentUrls = ''
+    if (submitFileList.value) {
+      if (Array.isArray(submitFileList.value)) {
+        attachmentUrls = submitFileList.value.filter(Boolean).join(',')
+      } else if (typeof submitFileList.value === 'string') {
+        attachmentUrls = submitFileList.value
+      }
+    }
+
     await feedbackApi.submit({
       activityId: submitForm.value.activityId,
       title: submitForm.value.title,
       content: submitForm.value.content,
-      fileIds: submitFileList.value.map(f => f.response?.data || f.url).filter(Boolean)
+      attachmentUrls: attachmentUrls
     })
     MessagePlugin.success('反馈提交成功')
     submitVisible.value = false
     fetchFeedbacks()
   } catch (err) {
     console.error('提交反馈失败', err)
+    MessagePlugin.error(err.response?.data?.message || '提交失败，请稍后重试')
   } finally {
     submitting.value = false
   }
@@ -262,7 +336,7 @@ onMounted(() => {
 .h5-my-feedbacks {
   min-height: 100vh;
   background: #f5f7fa;
-  padding-bottom: 80px;
+  padding-bottom: 40px;
 }
 
 .loading-wrap {
@@ -298,6 +372,10 @@ onMounted(() => {
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   cursor: pointer;
+}
+
+.feedback-item:active {
+  background: #f9fafb;
 }
 
 .item-header {
@@ -336,6 +414,17 @@ onMounted(() => {
   line-height: 1.6;
 }
 
+.item-attachments {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+  font-size: 12px;
+  color: #2563eb;
+}
+
 .empty-wrap {
   display: flex;
   justify-content: center;
@@ -372,9 +461,12 @@ onMounted(() => {
   color: #1f2937;
 }
 
-.close-icon {
+.close-btn {
+  font-size: 28px;
   color: #9ca3af;
   cursor: pointer;
+  line-height: 1;
+  padding: 0 8px;
 }
 
 .popup-body,
@@ -438,5 +530,37 @@ onMounted(() => {
   font-size: 14px;
   line-height: 1.8;
   color: #6b7280;
+}
+
+.attachment-section {
+  margin-bottom: 20px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.attachment-item:active {
+  background: #f3f4f6;
+}
+
+.file-name {
+  flex: 1;
+  font-size: 14px;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-icon {
+  color: #2563eb;
 }
 </style>

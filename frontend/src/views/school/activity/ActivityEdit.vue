@@ -331,23 +331,25 @@ const loadActivity = async () => {
 }
 
 const buildSubmitData = () => {
-  // 格式化日期时间：将 ISO 格式 (T分隔) 转换为后端期望的格式 (空格分隔)
+  // 格式化日期时间：解析 ISO 格式并转换为后端期望的 "yyyy-MM-dd HH:mm:ss"
   const formatDateTime = (dt) => {
     if (!dt) return null
+    let d
     if (typeof dt === 'string') {
-      // "2026-06-08T00:00:00" -> "2026-06-08 00:00:00"
-      return dt.replace('T', ' ')
+      d = new Date(dt)
+    } else if (dt instanceof Date) {
+      d = dt
+    } else {
+      d = new Date(dt)
     }
-    if (dt instanceof Date) {
-      const y = dt.getFullYear()
-      const m = String(dt.getMonth() + 1).padStart(2, '0')
-      const d = String(dt.getDate()).padStart(2, '0')
-      const h = String(dt.getHours()).padStart(2, '0')
-      const min = String(dt.getMinutes()).padStart(2, '0')
-      const s = String(dt.getSeconds()).padStart(2, '0')
-      return `${y}-${m}-${d} ${h}:${min}:${s}`
-    }
-    return dt
+    if (isNaN(d.getTime())) return null
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    const h = String(d.getHours()).padStart(2, '0')
+    const min = String(d.getMinutes()).padStart(2, '0')
+    const s = String(d.getSeconds()).padStart(2, '0')
+    return `${y}-${m}-${day} ${h}:${min}:${s}`
   }
 
   return {

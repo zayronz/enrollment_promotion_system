@@ -111,8 +111,8 @@
         <t-descriptions :column="2" bordered>
           <t-descriptions-item label="提交人">{{ currentRecord.realName || '-' }}</t-descriptions-item>
           <t-descriptions-item label="类型">
-            <t-tag :theme="currentRecord.userType === 'STUDENT' ? 'primary' : 'warning'" variant="light" size="small">
-              {{ currentRecord.userType === 'STUDENT' ? '学生' : '教师' }}
+            <t-tag :theme="currentRecord.userRole === 'STUDENT' ? 'primary' : 'warning'" variant="light" size="small">
+              {{ currentRecord.userRole === 'STUDENT' ? '学生' : '教师' }}
             </t-tag>
           </t-descriptions-item>
           <t-descriptions-item label="活动名称" :span="2">
@@ -129,17 +129,18 @@
           <h4 class="detail-subtitle">反馈内容</h4>
           <div class="content-full" v-html="currentRecord.content || '暂无内容'" />
         </div>
-        <div v-if="currentRecord.attachments && currentRecord.attachments.length > 0" class="attachment-section">
+        <div v-if="getAttachments(currentRecord).length > 0" class="attachment-section">
           <h4 class="detail-subtitle">附件列表</h4>
           <t-link
-            v-for="(file, index) in currentRecord.attachments"
+            v-for="(url, index) in getAttachments(currentRecord)"
             :key="index"
             theme="primary"
             hover="color"
             class="attachment-link"
+            @click="window.open(url)"
           >
             <template #prefix-icon><FileIcon /></template>
-            {{ file.name || file.fileName || '附件' + (index + 1) }}
+            {{ url.split('/').pop() || '附件' + (index + 1) }}
           </t-link>
         </div>
       </div>
@@ -151,6 +152,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { feedbackApi } from '@/api/feedback'
 import { activityApi } from '@/api/activity'
+import { getFileUrl } from '@/utils/file'
 import { getToken } from '@/utils/auth'
 import { SearchIcon, EditIcon, FileIcon } from 'tdesign-icons-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -196,7 +198,7 @@ const submitRules = {
 
 const columns = [
   { colKey: 'realName', title: '提交人', width: 100 },
-  { colKey: 'userType', title: '类型', width: 80 },
+  { colKey: 'userRole', title: '类型', width: 80 },
   { colKey: 'activityTitle', title: '所属活动', width: 180, ellipsis: true },
   { colKey: 'title', title: '标题', minWidth: 180, ellipsis: true },
   { colKey: 'contentSummary', title: '内容摘要', minWidth: 180, ellipsis: true },
@@ -260,9 +262,14 @@ const handleSubmit = async () => {
 
   submitting.value = true
   try {
-    const attachmentUrls = Array.isArray(submitFileList.value) 
-      ? submitFileList.value.join(',') 
-      : ''
+    let attachmentUrls = ''
+    if (submitFileList.value) {
+      if (Array.isArray(submitFileList.value)) {
+        attachmentUrls = submitFileList.value.join(',')
+      } else if (typeof submitFileList.value === 'string') {
+        attachmentUrls = submitFileList.value
+      }
+    }
     
     await feedbackApi.submit({
       activityId: submitForm.value.activityId,
@@ -287,10 +294,16 @@ const showDetail = (row) => {
   detailVisible.value = true
 }
 
+const getAttachments = (row) => {
+  if (!row.attachmentUrls) return []
+  return row.attachmentUrls.split(',').filter(url => url.trim()).map(url => getFileUrl(url.trim()))
+}
+
 const downloadAttachments = (row) => {
-  if (row.attachments && row.attachments.length > 0) {
-    row.attachments.forEach(file => {
-      if (file.url) window.open(file.url)
+  const attachments = getAttachments(row)
+  if (attachments.length > 0) {
+    attachments.forEach(url => {
+      window.open(url)
     })
   } else {
     MessagePlugin.info('暂无附件可下载')

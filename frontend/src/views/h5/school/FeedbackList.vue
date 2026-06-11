@@ -1,97 +1,133 @@
 <template>
-  <div class="feedback-list">
+  <div class="h5-school-feedback">
     <H5NavBar title="反馈管理" />
 
-    <!-- 搜索框 -->
-    <div class="search-box">
-      <input v-model="keyword" placeholder="搜索反馈标题或内容..." @keyup.enter="fetchData" />
-    </div>
+    <t-loading v-if="loading" text="加载中..." size="small" class="loading-wrap" />
 
-    <!-- 反馈列表 -->
-    <div class="list-content">
-      <div v-for="item in records" :key="item.id" class="feedback-card" @click="showDetail(item)">
-        <div class="card-header">
-          <div class="user-info">
-            <span class="user-name">{{ item.realName }}</span>
-            <t-tag :theme="item.userType === 'STUDENT' ? 'primary' : 'warning'" variant="light" size="small">
-              {{ item.userType === 'STUDENT' ? '学生' : '教师' }}
+    <div v-else class="content-wrap">
+      <!-- Search & filter -->
+      <div class="filter-bar">
+        <t-input
+          v-model="keyword"
+          placeholder="搜索反馈标题或内容..."
+          clearable
+          @change="handleSearch"
+        />
+        <t-select
+          v-model="activityFilter"
+          placeholder="按活动筛选"
+          clearable
+          class="filter-select"
+          @change="handleSearch"
+        >
+          <t-option
+            v-for="opt in activityOptions"
+            :key="opt.value"
+            :value="opt.value"
+            :label="opt.label"
+          />
+        </t-select>
+      </div>
+
+      <!-- Feedback list -->
+      <div v-if="records.length > 0" class="feedback-list">
+        <div
+          v-for="item in records"
+          :key="item.id"
+          class="feedback-item"
+          @click="showDetail(item)"
+        >
+          <div class="item-header">
+            <t-tag
+              :theme="item.userRole === 'STUDENT' ? 'primary' : 'warning'"
+              variant="light"
+              size="small"
+            >
+              {{ item.userRole === 'STUDENT' ? '学生' : '教师' }}
             </t-tag>
+            <span class="item-realname">{{ item.realName || '匿名' }}</span>
+            <span class="item-time">{{ formatDateTime(item.createTime) }}</span>
           </div>
-          <span class="apply-time">{{ formatDateTime(item.createTime) }}</span>
+          <div class="item-title">{{ item.title || '反馈' }}</div>
+          <div class="item-activity">
+            <span class="activity-label">活动：</span>{{ item.activityTitle || '-' }}
+          </div>
+          <div class="item-content" v-html="item.content?.substring(0, 80) + (item.content?.length > 80 ? '...' : '')" />
+          <div v-if="getAttachments(item).length > 0" class="item-attachments">
+            <span class="attachment-icon">📎</span>
+            <span>{{ getAttachments(item).length }}个附件</span>
+          </div>
         </div>
 
-        <div class="card-body">
-          <div class="feedback-title">{{ item.title }}</div>
-          <div class="feedback-content">{{ item.content }}</div>
-          <div class="feedback-meta">
-            <span class="activity-name">{{ item.activityTitle }}</span>
-            <span v-if="item.attachments && item.attachments.length > 0" class="attachment-count">
-              {{ item.attachments.length }}个附件
-            </span>
-          </div>
+        <!-- Load more -->
+        <div v-if="hasMore && !loadingMore" class="load-more" @click="loadMore">
+          加载更多
         </div>
       </div>
 
-      <div v-if="loading" class="loading-text">加载中...</div>
-      <div v-if="!loading && records.length === 0" class="empty-text">暂无反馈</div>
-
-      <!-- 加载更多 -->
-      <div v-if="hasMore && !loading" class="load-more" @click="loadMore">
-        加载更多
+      <div v-else class="empty-wrap">
+        <div class="empty-text">暂无反馈记录</div>
       </div>
     </div>
 
-    <!-- 详情弹窗 -->
-    <t-popup v-model:visible="detailVisible" placement="bottom">
-      <div class="detail-panel">
-        <div class="panel-header">
-          <div class="panel-title">反馈详情</div>
-          <div class="panel-close" @click="detailVisible = false">×</div>
+    <!-- Detail popup -->
+    <t-popup
+      v-model:visible="detailVisible"
+      placement="bottom"
+      class="detail-popup"
+    >
+      <div v-if="currentRecord" class="detail-content">
+        <div class="detail-header">
+          <div class="detail-title">反馈详情</div>
+          <div class="close-btn" @click="closeDetailDialog">×</div>
         </div>
-        <div class="panel-body">
-          <div class="detail-section">
-            <div class="detail-row">
-              <span class="detail-label">提交人:</span>
-              <span class="detail-value">{{ currentRecord?.realName }}</span>
+
+        <div class="detail-body">
+          <div class="info-section">
+            <div class="info-item">
+              <span class="info-key">提交人</span>
+              <span class="info-val">{{ currentRecord.realName || '匿名' }}</span>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">类型:</span>
-              <t-tag :theme="currentRecord?.userType === 'STUDENT' ? 'primary' : 'warning'" variant="light" size="small">
-                {{ currentRecord?.userType === 'STUDENT' ? '学生' : '教师' }}
+            <div class="info-item">
+              <span class="info-key">类型</span>
+              <t-tag
+                :theme="currentRecord.userRole === 'STUDENT' ? 'primary' : 'warning'"
+                variant="light"
+                size="small"
+              >
+                {{ currentRecord.userRole === 'STUDENT' ? '学生' : '教师' }}
               </t-tag>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">活动:</span>
-              <span class="detail-value">{{ currentRecord?.activityTitle }}</span>
+            <div class="info-item">
+              <span class="info-key">活动名称</span>
+              <span class="info-val">{{ currentRecord.activityTitle || '-' }}</span>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">标题:</span>
-              <span class="detail-value">{{ currentRecord?.title }}</span>
+            <div class="info-item">
+              <span class="info-key">反馈标题</span>
+              <span class="info-val">{{ currentRecord.title || '-' }}</span>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">时间:</span>
-              <span class="detail-value">{{ formatDateTime(currentRecord?.createTime) }}</span>
+            <div class="info-item">
+              <span class="info-key">提交时间</span>
+              <span class="info-val">{{ formatDateTime(currentRecord.createTime) }}</span>
             </div>
           </div>
 
-          <div class="content-section">
+          <div class="feedback-body">
             <div class="section-title">反馈内容</div>
-            <div class="content-text" v-html="currentRecord?.content || '暂无内容'"></div>
+            <div class="content-full" v-html="currentRecord.content || '暂无内容'" />
           </div>
 
-          <div v-if="currentRecord?.attachments && currentRecord.attachments.length > 0" class="attachment-section">
+          <div v-if="getAttachments(currentRecord).length > 0" class="attachment-section">
             <div class="section-title">附件列表</div>
             <div
-              v-for="(file, index) in currentRecord.attachments"
+              v-for="(url, index) in getAttachments(currentRecord)"
               :key="index"
               class="attachment-item"
-              @click="downloadFile(file)"
+              @click="downloadFile(url)"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
-              <span>{{ file.name || file.fileName || '附件' + (index + 1) }}</span>
+              <span class="attachment-icon">📎</span>
+              <span class="file-name">{{ getFileName(url) || '附件' + (index + 1) }}</span>
+              <t-icon name="download" size="16" class="download-icon" />
             </div>
           </div>
         </div>
@@ -101,268 +137,355 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { feedbackApi } from '@/api/feedback'
+import { activityApi } from '@/api/activity'
+import { getFileUrl } from '@/utils/file'
+import { MessagePlugin } from 'tdesign-vue-next'
 import H5NavBar from '../components/H5NavBar.vue'
 
-const records = ref([])
 const loading = ref(false)
+const loadingMore = ref(false)
+const records = ref([])
 const keyword = ref('')
-const current = ref(1)
-const hasMore = ref(true)
+const activityFilter = ref('')
+const activityOptions = ref([])
+
 const detailVisible = ref(false)
 const currentRecord = ref(null)
+
+const hasMore = computed(() => records.value.length >= 10)
+
+const getAttachments = (row) => {
+  if (!row) return []
+  if (Array.isArray(row.attachments) && row.attachments.length > 0) {
+    return row.attachments.map(a => getFileUrl(a.url || a.fileUrl || a))
+  }
+  if (row.attachmentUrls) {
+    if (Array.isArray(row.attachmentUrls)) {
+      return row.attachmentUrls.filter(Boolean).map(url => getFileUrl(url))
+    }
+    if (typeof row.attachmentUrls === 'string') {
+      return row.attachmentUrls.split(',').filter(Boolean).map(url => getFileUrl(url.trim()))
+    }
+  }
+  return []
+}
+
+const getFileName = (url) => {
+  if (!url) return ''
+  try {
+    const parts = url.split('/')
+    const filename = parts[parts.length - 1].split('?')[0]
+    return filename.length > 40 ? filename.substring(0, 37) + '...' : filename
+  } catch {
+    return '附件'
+  }
+}
+
+const downloadFile = (url) => {
+  if (url) {
+    window.open(url)
+  } else {
+    MessagePlugin.info('附件地址无效')
+  }
+}
+
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const res = await feedbackApi.getAllFeedbacks(activityFilter.value || undefined)
+    let data = res.data
+    let list = []
+    if (Array.isArray(data)) {
+      list = data
+    } else if (data && Array.isArray(data.records)) {
+      list = data.records
+    } else {
+      list = []
+    }
+
+    if (keyword.value) {
+      const kw = keyword.value.toLowerCase()
+      list = list.filter(item =>
+        (item.title && item.title.toLowerCase().includes(kw)) ||
+        (item.content && item.content.toLowerCase().includes(kw))
+      )
+    }
+    records.value = list
+  } catch (err) {
+    console.error('获取反馈列表失败', err)
+    records.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+const fetchActivities = async () => {
+  try {
+    const res = await activityApi.getActivityList({ page: 1, size: 100 })
+    let list = []
+    if (Array.isArray(res.data)) {
+      list = res.data
+    } else if (res.data && Array.isArray(res.data.records)) {
+      list = res.data.records
+    }
+    activityOptions.value = list.map(a => ({
+      value: a.id,
+      label: a.name || a.title || '活动'
+    }))
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const handleSearch = () => fetchData()
+
+const loadMore = async () => {
+  if (loadingMore.value) return
+  loadingMore.value = true
+  try {
+    await fetchData()
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+const showDetail = (row) => {
+  currentRecord.value = row
+  detailVisible.value = true
+}
+
+const closeDetailDialog = () => {
+  detailVisible.value = false
+}
 
 const formatDateTime = (str) => {
   if (!str) return '-'
   return new Date(str).toLocaleString('zh-CN')
 }
 
-const fetchData = async () => {
-  loading.value = true
-  try {
-    const res = await feedbackApi.getAllFeedbacks()
-    let data = res.data?.records || res.data || []
-    // 过滤关键词
-    if (keyword.value) {
-      data = data.filter(item =>
-        item.title?.includes(keyword.value) || item.content?.includes(keyword.value)
-      )
-    }
-    records.value = data.slice(0, 10)
-    current.value = 1
-    hasMore.value = data.length > 10
-  } catch (err) {
-    console.error('获取反馈列表失败', err)
-  } finally {
-    loading.value = false
-  }
-}
-
-const loadMore = async () => {
-  if (!hasMore.value || loading.value) return
-  loading.value = true
-  try {
-    const res = await feedbackApi.getAllFeedbacks()
-    let data = res.data?.records || res.data || []
-    if (keyword.value) {
-      data = data.filter(item =>
-        item.title?.includes(keyword.value) || item.content?.includes(keyword.value)
-      )
-    }
-    const newItems = data.slice(current.value * 10, (current.value + 1) * 10)
-    records.value = [...records.value, ...newItems]
-    current.value++
-    hasMore.value = newItems.length >= 10
-  } catch (err) {
-    console.error('加载更多失败', err)
-  } finally {
-    loading.value = false
-  }
-}
-
-const showDetail = (item) => {
-  currentRecord.value = item
-  detailVisible.value = true
-}
-
-const downloadFile = (file) => {
-  if (file.url) {
-    window.open(file.url)
-  } else {
-    console.log('附件地址无效')
-  }
-}
-
 onMounted(() => {
   fetchData()
+  fetchActivities()
 })
 </script>
 
 <style scoped>
-.feedback-list {
+.h5-school-feedback {
   min-height: 100vh;
   background: #f5f7fa;
   padding-bottom: 20px;
 }
 
-.search-box {
-  margin: 12px;
-  background: #fff;
-  border-radius: 8px;
+.loading-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 60px 0;
+}
+
+.content-wrap {
   padding: 12px;
 }
 
-.search-box input {
+.filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filter-select {
   width: 100%;
-  border: none;
-  outline: none;
-  font-size: 14px;
-  background: transparent;
 }
 
-.list-content {
-  padding: 0 12px;
+.feedback-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.feedback-card {
+.feedback-item {
   background: #fff;
   border-radius: 12px;
   padding: 16px;
-  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   cursor: pointer;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+.feedback-item:active {
+  background: #f9fafb;
 }
 
-.user-info {
+.item-header {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 10px;
 }
 
-.user-name {
-  font-size: 15px;
-  font-weight: 600;
+.item-realname {
+  font-size: 13px;
   color: #1f2937;
+  font-weight: 500;
+  flex: 1;
 }
 
-.apply-time {
+.item-time {
   font-size: 12px;
   color: #9ca3af;
+  flex-shrink: 0;
 }
 
-.feedback-title {
+.item-title {
   font-size: 15px;
   font-weight: 600;
   color: #1f2937;
   margin-bottom: 8px;
-}
-
-.feedback-content {
-  font-size: 13px;
-  color: #6b7280;
-  line-height: 1.5;
-  margin-bottom: 12px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.feedback-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.activity-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.attachment-count {
-  flex-shrink: 0;
+.item-activity {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 8px;
 }
 
-.loading-text, .empty-text {
-  text-align: center;
+.activity-label {
   color: #9ca3af;
-  padding: 20px;
-  font-size: 14px;
+}
+
+.item-content {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.item-attachments {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+  font-size: 12px;
+  color: #2563eb;
 }
 
 .load-more {
   text-align: center;
-  padding: 12px;
+  padding: 16px;
   color: #2563eb;
   font-size: 14px;
   cursor: pointer;
 }
 
-/* 详情弹窗样式 */
-.detail-panel {
-  background: #fff;
-  border-radius: 16px 16px 0 0;
-  max-height: 85vh;
-  overflow-y: auto;
+.empty-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 0;
 }
 
-.panel-header {
+.empty-text {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.detail-popup {
+  width: 100%;
+  height: 85vh;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+}
+
+.detail-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 16px;
   border-bottom: 1px solid #f0f0f0;
-  position: sticky;
-  top: 0;
-  background: #fff;
 }
 
-.panel-title {
-  font-size: 16px;
+.detail-title {
+  font-size: 18px;
   font-weight: 600;
   color: #1f2937;
 }
 
-.panel-close {
+.close-btn {
   font-size: 28px;
   color: #9ca3af;
   cursor: pointer;
   line-height: 1;
+  padding: 0 8px;
 }
 
-.panel-body {
+.detail-body {
   padding: 16px;
+  max-height: 72vh;
+  overflow-y: auto;
 }
 
-.detail-section {
+.info-section {
   margin-bottom: 20px;
 }
 
-.detail-row {
+.info-item {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-key {
   font-size: 14px;
-}
-
-.detail-label {
-  color: #6b7280;
-  margin-right: 12px;
+  color: #9ca3af;
   flex-shrink: 0;
-  width: 60px;
 }
 
-.detail-value {
+.info-val {
+  font-size: 14px;
   color: #1f2937;
+  text-align: right;
   flex: 1;
+  margin-left: 16px;
+  word-break: break-word;
 }
 
-.content-section, .attachment-section {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
+.feedback-body {
+  margin-bottom: 20px;
 }
 
 .section-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #1f2937;
   margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.content-text {
+.content-full {
   font-size: 14px;
   line-height: 1.8;
   color: #6b7280;
+}
+
+.attachment-section {
+  margin-bottom: 20px;
 }
 
 .attachment-item {
@@ -370,15 +493,26 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: #f5f7fa;
+  background: #f9fafb;
   border-radius: 8px;
   margin-bottom: 8px;
   cursor: pointer;
-  font-size: 14px;
-  color: #2563eb;
 }
 
-.attachment-item:hover {
-  background: #e5e7eb;
+.attachment-item:active {
+  background: #f3f4f6;
+}
+
+.file-name {
+  flex: 1;
+  font-size: 14px;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-icon {
+  color: #2563eb;
 }
 </style>
