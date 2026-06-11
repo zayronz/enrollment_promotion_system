@@ -62,10 +62,17 @@ public class RegistrationService {
             throw new BusinessException("不在报名时间内");
         }
 
-        // 2. 检查是否已报名
+        // 2. 检查是否已报名（只查询最新的报名记录）
         RegistrationEntity existReg = registrationMapper.findByActivityAndUser(dto.getActivityId(), userId);
-        if (existReg != null && existReg.getStatus() != 4) { // 4表示已撤回
-            throw new BusinessException("您已报名过此活动");
+        if (existReg != null) {
+            // 状态说明：0=待审核, 1=学院通过, 2=全部通过, 3=已拒绝, 4=已撤回
+            // 只有被拒绝(3)或已撤回(4)的情况下才允许重新报名
+            if (existReg.getStatus() != 3 && existReg.getStatus() != 4) {
+                String statusMsg = existReg.getStatus() == 0 ? "审核中" : 
+                                   existReg.getStatus() == 1 ? "学院审核通过" : 
+                                   existReg.getStatus() == 2 ? "报名成功" : "已报名";
+                throw new BusinessException("您已报名过此活动，当前状态：" + statusMsg);
+            }
         }
 
         // 3. 获取用户信息

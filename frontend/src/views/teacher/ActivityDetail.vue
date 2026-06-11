@@ -47,12 +47,36 @@
         <!-- Register button -->
         <div v-if="canRegister" class="register-area">
           <t-button
+            v-if="!alreadyRegistered"
             theme="primary"
             size="large"
-            :disabled="alreadyRegistered || activity.status === 2"
             @click="goRegister"
           >
-            {{ alreadyRegistered ? '已报名' : activity.status === 2 ? '已结束' : '立即报名' }}
+            立即报名
+          </t-button>
+          <t-button
+            v-else-if="canReApply"
+            theme="warning"
+            size="large"
+            @click="goRegister"
+          >
+            重新报名
+          </t-button>
+          <t-button
+            v-else-if="activity.status === 2"
+            theme="default"
+            size="large"
+            disabled
+          >
+            已结束
+          </t-button>
+          <t-button
+            v-else
+            theme="default"
+            size="large"
+            disabled
+          >
+            {{ registrationStatus === 0 ? '审核中' : registrationStatus === 1 ? '学院审核通过' : registrationStatus === 2 ? '报名成功' : '已报名' }}
           </t-button>
         </div>
       </div>
@@ -101,6 +125,7 @@ const router = useRouter()
 const activity = ref(null)
 const loading = ref(true)
 const alreadyRegistered = ref(false)
+const registrationStatus = ref(null) // 保存报名状态
 
 const canRegister = computed(() => {
   if (!activity.value) return false
@@ -116,6 +141,11 @@ const canRegister = computed(() => {
   return true
 })
 
+// 判断是否允许重新报名（被拒绝或已撤回后可以重新报名）
+const canReApply = computed(() => {
+  return registrationStatus.value === 3 || registrationStatus.value === 4 // 3=已拒绝, 4=已撤回
+})
+
 const fetchDetail = async () => {
   loading.value = true
   try {
@@ -125,7 +155,15 @@ const fetchDetail = async () => {
     try {
       const regRes = await registrationApi.getMyRegistrations()
       const myRecords = regRes.data?.records || []
-      alreadyRegistered.value = myRecords.some(r => r.activityId === activity.value.id)
+      const existingRegistration = myRecords.find(r => r.activityId === activity.value.id)
+      if (existingRegistration) {
+        alreadyRegistered.value = true
+        registrationStatus.value = existingRegistration.status
+        console.log('用户报名状态:', existingRegistration.status)
+      } else {
+        alreadyRegistered.value = false
+        registrationStatus.value = null
+      }
     } catch (e) {
       console.error(e)
     }

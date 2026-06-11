@@ -210,12 +210,16 @@ const showDetail = (row) => {
 
 const handleAudit = (id, result) => {
   const label = result === 'APPROVED' ? '通过' : '拒绝'
-  DialogPlugin.confirm({
+  const dialog = DialogPlugin.confirm({
     header: '确认操作',
     body: `确定要${label}此报名吗？`,
     confirmBtn: { content: `确定${label}`, theme: result === 'APPROVED' ? 'success' : 'warning' },
     onConfirm: () => {
+      dialog.destroy()
       doSingleAudit(id, result)
+    },
+    onCancel: () => {
+      dialog.destroy()
     }
   })
 }
@@ -238,11 +242,12 @@ const doAudit = async (result) => {
 
 const batchAudit = (result) => {
   const label = result === 'APPROVED' ? '通过' : '拒绝'
-  DialogPlugin.confirm({
+  const dialog = DialogPlugin.confirm({
     header: '批量操作',
     body: `确定要批量${label}选中的 ${selectedIds.value.length} 条报名吗？`,
     confirmBtn: { content: `确定${label}`, theme: result === 'APPROVED' ? 'success' : 'warning' },
     onConfirm: async () => {
+      dialog.destroy()
       try {
         await auditApi.batchAudit({ registrationIds: selectedIds.value, passed: result === 'APPROVED', comment: '' })
         MessagePlugin.success(`已${label} ${selectedIds.value.length} 条报名`)
@@ -251,6 +256,9 @@ const batchAudit = (result) => {
       } catch (err) {
         console.error('批量审核失败', err)
       }
+    },
+    onCancel: () => {
+      dialog.destroy()
     }
   })
 }

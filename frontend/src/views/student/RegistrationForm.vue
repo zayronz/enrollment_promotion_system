@@ -185,14 +185,24 @@ const handleSchoolInput = async (value) => {
 const handleSubmit = async (e) => {
   if (e && e.preventDefault) e.preventDefault()
 
+  console.log('开始提交报名表单')
+  
   const valid = await formRef.value.validate()
-  if (valid !== true) return
+  console.log('表单验证结果:', valid)
+  
+  if (valid !== true) {
+    console.log('表单验证失败')
+    return
+  }
 
-  DialogPlugin.confirm({
+  const dialog = DialogPlugin.confirm({
     header: '确认提交',
     body: '确定要提交此报名吗？提交后需等待审核。',
     confirmBtn: '确认提交',
+    cancelBtn: '取消',
     onConfirm: async () => {
+      console.log('用户点击确认提交')
+      dialog.destroy()
       submitting.value = true
       try {
         const customData = {}
@@ -206,15 +216,28 @@ const handleSubmit = async (e) => {
           score: formData.score,
           formData: customData
         }
-        await registrationApi.submit(payload)
+        console.log('提交的数据:', payload)
+        
+        const result = await registrationApi.submit(payload)
+        console.log('提交成功:', result)
+        
         MessagePlugin.success('报名提交成功')
-        router.push('/student/my-registrations')
+        
+        setTimeout(() => {
+          console.log('跳转到报名列表页')
+          router.push('/student/my-registrations')
+        }, 1500)
+        
       } catch (err) {
         console.error('提交报名失败', err)
-        MessagePlugin.error(err.response?.data?.message || '提交失败')
+        MessagePlugin.error(err.response?.data?.message || err.message || '提交失败')
       } finally {
         submitting.value = false
       }
+    },
+    onCancel: () => {
+      console.log('用户点击取消')
+      dialog.destroy()
     }
   })
 }
