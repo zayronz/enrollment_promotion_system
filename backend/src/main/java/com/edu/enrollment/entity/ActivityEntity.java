@@ -25,7 +25,6 @@ public class ActivityEntity extends BaseEntity {
     private LocalDateTime registrationStartTime;
     private LocalDateTime registrationEndTime;
     private String bannerUrl;
-    private String bannerUrls;  // JSON数组格式存储多张轮播图
     private String videoUrl;
     private String coverImage;
     private Integer status;

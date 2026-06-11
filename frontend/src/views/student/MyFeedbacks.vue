@@ -4,7 +4,6 @@
       <h2 class="page-title">我的反馈</h2>
     </div>
 
-    <!-- Search & filter -->
     <div class="filter-bar">
       <t-select
         v-model="activityFilter"
@@ -48,11 +47,10 @@
       </template>
     </t-table>
 
-    <!-- Submit feedback dialog -->
     <t-dialog
       v-model:visible="submitVisible"
       header="提交反馈"
-      width="680px"
+      width="720px"
       :confirm-btn="{ content: '提交', theme: 'primary' }"
       @confirm="handleSubmitFeedback"
     >
@@ -75,27 +73,14 @@
           <t-input v-model="submitForm.title" placeholder="请输入反馈标题" clearable />
         </t-form-item>
         <t-form-item label="反馈内容" name="content">
-          <t-textarea
-            v-model="submitForm.content"
-            placeholder="请输入工作反馈内容，支持富文本格式..."
-            :autosize="{ minRows: 5, maxRows: 12 }"
-          />
+          <RichTextEditor v-model="submitForm.content" />
         </t-form-item>
         <t-form-item label="附件上传">
-          <t-upload
-            v-model="submitFileList"
-            :action="uploadUrl"
-            :headers="uploadHeaders"
-            :max="5"
-            :size-limit="{ size: 20, unit: 'MB' }"
-            theme="file-flow"
-            :abridge-name="[8, 6]"
-          />
+          <FileUploader v-model="submitFileList" />
         </t-form-item>
       </t-form>
     </t-dialog>
 
-    <!-- Detail dialog -->
     <t-dialog
       v-model:visible="detailVisible"
       header="反馈详情"
@@ -131,6 +116,8 @@ import { activityApi } from '@/api/activity'
 import { getToken } from '@/utils/auth'
 import { AddIcon } from 'tdesign-icons-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
+import RichTextEditor from '@/components/business/RichTextEditor.vue'
+import FileUploader from '@/components/business/FileUploader.vue'
 
 const records = ref([])
 const loading = ref(false)
@@ -231,17 +218,22 @@ const handleSubmitFeedback = async () => {
   if (valid !== true) return
 
   try {
+    const attachmentUrls = Array.isArray(submitFileList.value) 
+      ? submitFileList.value.join(',') 
+      : ''
+    
     await feedbackApi.submit({
       activityId: submitForm.value.activityId,
       title: submitForm.value.title,
       content: submitForm.value.content,
-      fileIds: submitFileList.value.map(f => f.response?.data || f.url).filter(Boolean)
+      attachmentUrls
     })
     MessagePlugin.success('反馈提交成功')
     submitVisible.value = false
     fetchFeedbacks()
   } catch (err) {
     console.error('提交反馈失败', err)
+    MessagePlugin.error(err.response?.data?.message || '提交失败')
   }
 }
 

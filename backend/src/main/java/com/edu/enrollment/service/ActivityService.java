@@ -88,7 +88,6 @@ public class ActivityService {
         entity.setRegistrationStartTime(dto.getRegistrationStartTime());
         entity.setRegistrationEndTime(dto.getRegistrationEndTime());
         entity.setBannerUrl(dto.getBannerUrl());
-        entity.setBannerUrls(JSONUtil.toJsonStr(dto.getBannerUrls()));
         entity.setVideoUrl(dto.getVideoUrl());
         entity.setCoverImage(dto.getCoverImage());
         entity.setStatus(0); // 草稿
@@ -150,7 +149,6 @@ public class ActivityService {
         entity.setRegistrationStartTime(dto.getRegistrationStartTime());
         entity.setRegistrationEndTime(dto.getRegistrationEndTime());
         entity.setBannerUrl(dto.getBannerUrl());
-        entity.setBannerUrls(JSONUtil.toJsonStr(dto.getBannerUrls()));
         entity.setVideoUrl(dto.getVideoUrl());
         entity.setCoverImage(dto.getCoverImage());
         entity.setAuditFlow(JSONUtil.toJsonStr(dto.getAuditFlow()));
@@ -224,8 +222,6 @@ public class ActivityService {
         vo.setRegistrationStartTime(entity.getRegistrationStartTime());
         vo.setRegistrationEndTime(entity.getRegistrationEndTime());
         vo.setBannerUrl(entity.getBannerUrl());
-        vo.setBannerUrls(StrUtil.isNotBlank(entity.getBannerUrls())
-                ? JSONUtil.toList(entity.getBannerUrls(), String.class) : null);
         vo.setVideoUrl(entity.getVideoUrl());
         vo.setCoverImage(entity.getCoverImage());
         vo.setStatus(entity.getStatus());

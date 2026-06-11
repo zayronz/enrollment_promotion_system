@@ -16,17 +16,25 @@
           label-width="100px"
           @submit="handleSubmit"
         >
-          <!-- Target school with autocomplete -->
           <t-form-item label="目标学校" name="targetSchool">
             <t-auto-complete
               v-model="formData.targetSchool"
               :options="schoolSuggestions"
               placeholder="请输入招生对象学校名称"
               clearable
+              @input="handleSchoolInput"
             />
           </t-form-item>
 
-          <!-- Dynamic custom fields -->
+          <t-form-item label="成绩/绩点" name="score">
+            <t-input
+              v-model="formData.score"
+              type="number"
+              placeholder="请输入成绩或绩点"
+              clearable
+            />
+          </t-form-item>
+
           <t-form-item
             v-for="(field, index) in customFields"
             :key="index"
@@ -73,16 +81,14 @@
             />
           </t-form-item>
 
-          <!-- File upload -->
-          <t-form-item label="附件上传" name="files">
-            <t-upload
-              v-model="fileList"
-              :action="uploadUrl"
-              :headers="uploadHeaders"
-              :max="5"
-              :size-limit="{ size: 10, unit: 'MB' }"
-              theme="file-flow"
-              :abridge-name="[8, 6]"
+          <t-form-item label="附件上传" name="attachments">
+            <FileUploader
+              v-model="formData.attachments"
+              :multiple="true"
+              :limit="5"
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+              list-type="file"
+              tip-text="支持图片、PDF、Word、Excel格式，单个文件不超过10MB"
             />
           </t-form-item>
 
@@ -105,12 +111,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { activityApi } from '@/api/activity'
 import { registrationApi } from '@/api/registeration'
-import { getToken } from '@/utils/auth'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
+import FileUploader from '@/components/business/FileUploader.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -121,15 +127,12 @@ const loading = ref(true)
 const submitting = ref(false)
 const customFields = ref([])
 const schoolSuggestions = ref([])
-const fileList = ref([])
-
-const uploadUrl = '/api/file/upload'
-const uploadHeaders = computed(() => ({
-  Authorization: `Bearer ${getToken()}`
-}))
+const searchTimeout = ref(null)
 
 const formData = reactive({
-  targetSchool: ''
+  targetSchool: '',
+  score: null,
+  attachments: []
 })
 
 const rules = {
@@ -143,7 +146,6 @@ const fetchActivity = async () => {
     activity.value = res.data
     customFields.value = res.data.customFields || []
 
-    // Init custom field data
     customFields.value.forEach((field, index) => {
       formData['custom_' + index] = ''
     })
@@ -154,13 +156,38 @@ const fetchActivity = async () => {
   }
 }
 
+const handleSchoolInput = async (value) => {
+  if (!value || value.length < 2) {
+    schoolSuggestions.value = []
+    return
+  }
+
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value)
+  }
+
+  searchTimeout.value = setTimeout(async () => {
+    try {
+      const res = await fetch(`/api/school-dict/search?keyword=${encodeURIComponent(value)}`)
+      const data = await res.json()
+      if (data.code === 200 && data.data) {
+        schoolSuggestions.value = data.data.map(item => ({
+          label: item.name,
+          value: item.name
+        }))
+      }
+    } catch (err) {
+      console.error('搜索学校失败', err)
+    }
+  }, 300)
+}
+
 const handleSubmit = async (e) => {
   if (e && e.preventDefault) e.preventDefault()
 
   const valid = await formRef.value.validate()
   if (valid !== true) return
 
-  // Confirm dialog
   DialogPlugin.confirm({
     header: '确认提交',
     body: '确定要提交此报名吗？提交后需等待审核。',
@@ -168,20 +195,23 @@ const handleSubmit = async (e) => {
     onConfirm: async () => {
       submitting.value = true
       try {
+        const customData = {}
+        customFields.value.forEach((field, index) => {
+          customData[field.name] = formData['custom_' + index]
+        })
+
         const payload = {
           activityId: route.params.id,
           targetSchool: formData.targetSchool,
-          customFields: customFields.value.map((field, index) => ({
-            name: field.name,
-            value: formData['custom_' + index]
-          })),
-          fileIds: fileList.value.map(f => f.response?.data || f.url).filter(Boolean)
+          score: formData.score,
+          formData: customData
         }
         await registrationApi.submit(payload)
         MessagePlugin.success('报名提交成功')
         router.push('/student/my-registrations')
       } catch (err) {
         console.error('提交报名失败', err)
+        MessagePlugin.error(err.response?.data?.message || '提交失败')
       } finally {
         submitting.value = false
       }
