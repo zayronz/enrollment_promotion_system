@@ -156,10 +156,18 @@
         <div class="card-body">
           <div class="action-list">
             <div class="action-item" @click="goHome">
-              <div class="action-icon"><HomeIcon /></div>
+              <div class="action-icon"><component :is="route.path.startsWith('/h5') ? LogoutIcon : HomeIcon" /></div>
               <div class="action-text">
-                <span class="action-title">回到首页</span>
-                <span class="action-desc">返回功能主页</span>
+                <span class="action-title">{{ route.path.startsWith('/h5') ? '退出登录' : '回到首页' }}</span>
+                <span class="action-desc">{{ route.path.startsWith('/h5') ? '退出当前账号' : '返回功能主页' }}</span>
+              </div>
+              <t-icon name="chevron-right" size="16px" class="action-arrow" />
+            </div>
+            <div class="action-item" @click="showPasswordDialog = true">
+              <div class="action-icon"><LockOnIcon /></div>
+              <div class="action-text">
+                <span class="action-title">修改密码</span>
+                <span class="action-desc">更新登录密码</span>
               </div>
               <t-icon name="chevron-right" size="16px" class="action-arrow" />
             </div>
@@ -167,6 +175,44 @@
         </div>
       </div>
     </div>
+
+    <!-- 修改密码对话框 -->
+    <t-dialog
+      v-model:visible="showPasswordDialog"
+      header="修改密码"
+      width="420px"
+      :confirm-btn="{ content: '确认修改', theme: 'primary', loading: passwordSubmitting }"
+      :cancel-btn="{ content: '取消' }"
+      @confirm="handleChangePassword"
+      @close="closePasswordDialog"
+    >
+      <t-form :data="passwordForm" label-width="100px" class="password-form">
+        <t-form-item label="当前密码">
+          <t-input
+            v-model="passwordForm.oldPassword"
+            type="password"
+            placeholder="请输入当前密码"
+            clearable
+          />
+        </t-form-item>
+        <t-form-item label="新密码">
+          <t-input
+            v-model="passwordForm.newPassword"
+            type="password"
+            placeholder="请输入新密码（至少6位）"
+            clearable
+          />
+        </t-form-item>
+        <t-form-item label="确认新密码">
+          <t-input
+            v-model="passwordForm.confirmPassword"
+            type="password"
+            placeholder="请再次输入新密码"
+            clearable
+          />
+        </t-form-item>
+      </t-form>
+    </t-dialog>
   </div>
 </template>
 
@@ -176,7 +222,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
 import { userApi } from '@/api/user'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { HomeIcon } from 'tdesign-icons-vue-next'
+import { HomeIcon, LockOnIcon, LogoutIcon } from 'tdesign-icons-vue-next'
 import axios from 'axios'
 import { getToken } from '@/utils/auth'
 
@@ -190,6 +236,13 @@ const passwordLoading = ref(false)
 const avatarUploading = ref(false)
 const avatarPreviewUrl = ref('')
 const avatarInputRef = ref(null)
+const showPasswordDialog = ref(false)
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+const passwordSubmitting = ref(false)
 
 const passwordForm = reactive({
   oldPassword: '',
@@ -335,6 +388,12 @@ const handleChangePassword = async () => {
 }
 
 const goHome = () => {
+  const isH5 = route.path.startsWith('/h5')
+  if (isH5) {
+    userStore.logout()
+    router.push('/h5/login')
+    return
+  }
   const roleHomeMap = {
     STUDENT: '/student/activities',
     TEACHER: '/teacher/activities',
@@ -343,6 +402,52 @@ const goHome = () => {
   }
   const target = roleHomeMap[userStore.role] || '/'
   router.push(target)
+}
+
+const handleChangePassword = async () => {
+  if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+    MessagePlugin.warning('请填写完整密码信息')
+    return
+  }
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    MessagePlugin.warning('两次输入的新密码不一致')
+    return
+  }
+  if (passwordForm.newPassword.length < 6) {
+    MessagePlugin.warning('新密码长度不能少于6位')
+    return
+  }
+
+  passwordSubmitting.value = true
+  try {
+    await userApi.changePassword({
+      oldPassword: passwordForm.oldPassword,
+      newPassword: passwordForm.newPassword
+    })
+    MessagePlugin.success('密码修改成功，请重新登录')
+    showPasswordDialog.value = false
+    // 清空表单
+    passwordForm.oldPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
+    // 退出登录
+    setTimeout(() => {
+      userStore.logout()
+      router.push('/login')
+    }, 1500)
+  } catch (err) {
+    console.error('修改密码失败', err)
+    MessagePlugin.error(err.response?.data?.message || '修改密码失败')
+  } finally {
+    passwordSubmitting.value = false
+  }
+}
+
+const closePasswordDialog = () => {
+  showPasswordDialog.value = false
+  passwordForm.oldPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
 }
 
 onMounted(() => {

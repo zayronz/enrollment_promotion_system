@@ -87,7 +87,9 @@ const handleCommand = (data) => {
       cancelBtn: '取消',
       onConfirm: () => {
         userStore.logout()
-        router.push('/login')
+        // H5 页面退出后跳转到 H5 登录页
+        const isH5 = window.location.pathname.startsWith('/h5')
+        router.push(isH5 ? '/h5/login' : '/login')
         dialog.destroy()
       }
     })
