@@ -92,8 +92,14 @@
       </t-form-item>
 
       <t-form-item label="人数限制">
-        <t-input-number v-model="form.maxStudentPerSchool" :min="0" placeholder="每校最多学生数" style="width: 180px" />
-        <t-input-number v-model="form.maxTeacherPerSchool" :min="0" placeholder="每校最多教师数" style="width: 180px; margin-left: 16px" />
+        <div class="quota-box">
+          <span class="quota-label">学生</span>
+          <t-input-number v-model="form.maxStudentPerSchool" :min="0" placeholder="每校最多人数" style="width: 140px" />
+        </div>
+        <div class="quota-box">
+          <span class="quota-label">老师</span>
+          <t-input-number v-model="form.maxTeacherPerSchool" :min="0" placeholder="每校最多人数" style="width: 140px" />
+        </div>
       </t-form-item>
 
       <t-form-item label="自动分组">
@@ -269,4 +275,20 @@ const goBack = () => {
 .custom-fields { width: 100%; }
 .custom-field-item { display: flex; align-items: center; margin-bottom: 12px; }
 .tip { margin-left: 12px; font-size: 12px; color: var(--td-text-color-placeholder); }
+.quota-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-right: 16px;
+}
+.quota-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--td-text-color-primary);
+  min-width: 40px;
+}
 </style>
