@@ -143,12 +143,13 @@ const columns = [
 const fetchData = async () => {
   loading.value = true
   try {
-    const res = await auditApi.getHistory({
+    const res = await auditApi.audit({
       page: pagination.value.current,
       size: pagination.value.pageSize,
       keyword: keyword.value || undefined,
       activityId: activityFilter.value || undefined,
-      result: resultFilter.value || undefined
+      result: resultFilter.value || undefined,
+      history: true
     })
     records.value = res.data?.records || []
     pagination.value.total = res.data?.total || 0

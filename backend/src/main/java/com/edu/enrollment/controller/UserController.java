@@ -80,4 +80,16 @@ public class UserController {
         userService.forgotPassword(dto);
         return ResultVO.success("密码重置成功，请使用新密码登录");
     }
+
+    @PostMapping("/forgot-password/code")
+    public ResultVO<?> sendForgotPasswordCode(@Valid @RequestBody ForgotPasswordCodeDTO dto) {
+        userService.sendForgotPasswordCode(dto);
+        return ResultVO.success("验证码已发送，请前往绑定邮箱查看");
+    }
+
+    @PostMapping("/forgot-password/verify")
+    public ResultVO<?> verifyForgotPasswordCode(@Valid @RequestBody ForgotPasswordVerifyDTO dto) {
+        userService.verifyForgotPasswordCode(dto);
+        return ResultVO.success("验证码验证成功，请设置新密码");
+    }
 }

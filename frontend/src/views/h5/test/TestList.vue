@@ -181,6 +181,7 @@ const goPage = (item) => {
   border-radius: 50%;
   border: 2px solid #fff;
   margin-left: -6px;
+  object-fit: cover;
 }
 .avatar:first-child {
   margin-left: 0;

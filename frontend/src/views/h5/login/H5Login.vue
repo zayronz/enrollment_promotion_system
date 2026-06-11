@@ -199,11 +199,11 @@ const quickLogin = async (account) => {
 }
 
 const handleForgotPassword = () => {
-  router.push('/forgot-password')
+  router.push('/h5/forgot-password')
 }
 
 const handleRegister = () => {
-  router.push('/register')
+  router.push('/h5/register')
 }
 </script>
 

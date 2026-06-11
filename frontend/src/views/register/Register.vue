@@ -128,13 +128,14 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { UserAddIcon } from 'tdesign-icons-vue-next'
 import { userApi } from '@/api/user'
 import request from '@/utils/request'
 
 const router = useRouter()
+const route = useRoute()
 const formRef = ref(null)
 const loading = ref(false)
 const colleges = ref([])
@@ -270,7 +271,7 @@ const handleRegister = async ({ validateResult, firstError }) => {
     if (res.code === 200) {
       MessagePlugin.success('注册成功，即将跳转登录页')
       setTimeout(() => {
-        router.push('/login')
+        router.push(route.path.startsWith('/h5') ? '/h5/login' : '/login')
       }, 1500)
     }
   } catch (error) {
@@ -282,7 +283,7 @@ const handleRegister = async ({ validateResult, firstError }) => {
 }
 
 const goToLogin = () => {
-  router.push('/login')
+  router.push(route.path.startsWith('/h5') ? '/h5/login' : '/login')
 }
 
 onMounted(() => {

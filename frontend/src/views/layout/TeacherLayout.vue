@@ -29,6 +29,22 @@
             <template #icon><ChatIcon /></template>
             意见反馈
           </t-menu-item>
+          <t-menu-item value="/teacher/test">
+            <template #icon><FileIcon /></template>
+            招生能力测试
+          </t-menu-item>
+          <t-menu-item value="/teacher/team">
+            <template #icon><UserIcon /></template>
+            我的组员
+          </t-menu-item>
+          <t-menu-item value="/teacher/approval">
+            <template #icon><FileIcon /></template>
+            报名审批
+          </t-menu-item>
+          <t-menu-item value="/teacher/materials">
+            <template #icon><FileIcon /></template>
+            招宣资料
+          </t-menu-item>
           <t-menu-item value="/profile">
             <template #icon><UserIcon /></template>
             个人中心

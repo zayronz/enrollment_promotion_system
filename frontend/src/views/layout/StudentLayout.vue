@@ -42,6 +42,22 @@
             <template #icon><ChatIcon /></template>
             我的反馈
           </t-menu-item>
+          <t-menu-item value="/student/test">
+            <template #icon><FileIcon /></template>
+            招生能力测试
+          </t-menu-item>
+          <t-menu-item value="/student/my-activity">
+            <template #icon><BrowseIcon /></template>
+            我的活动
+          </t-menu-item>
+          <t-menu-item value="/student/team">
+            <template #icon><UserIcon /></template>
+            我的组员
+          </t-menu-item>
+          <t-menu-item value="/student/materials">
+            <template #icon><FileIcon /></template>
+            招宣资料
+          </t-menu-item>
         </t-menu>
       </t-aside>
       <t-content class="app-content">
