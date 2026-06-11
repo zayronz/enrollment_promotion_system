@@ -216,11 +216,13 @@ const handleSubmit = async (e) => {
   const valid = await formRef.value.validate()
   if (valid !== true) return
 
-  DialogPlugin.confirm({
+  const dialog = DialogPlugin.confirm({
     header: '确认提交',
     body: '确定要提交此报名吗？提交后需等待审核。',
     confirmBtn: '确认提交',
+    cancelBtn: '取消',
     onConfirm: async () => {
+      dialog.destroy()
       submitting.value = true
       try {
         const payload = {
@@ -235,12 +237,18 @@ const handleSubmit = async (e) => {
         }
         await registrationApi.submit(payload)
         MessagePlugin.success('报名提交成功')
-        router.push('/teacher/my-registrations')
+        setTimeout(() => {
+          router.push('/teacher/my-registrations')
+        }, 1500)
       } catch (err) {
         console.error('提交报名失败', err)
+        MessagePlugin.error(err.response?.data?.message || err.message || '提交失败')
       } finally {
         submitting.value = false
       }
+    },
+    onCancel: () => {
+      dialog.destroy()
     }
   })
 }

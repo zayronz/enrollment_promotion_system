@@ -195,10 +195,11 @@ const handleDelete = async (id) => {
 const toggleHomeShow = async (row, val) => {
   try {
     await activityApi.setHomeShow(row.id, val)
-    row.showOnHome = val ? 1 : 0
+    row.showOnHome = val
     MessagePlugin.success(val ? '已设置首页展示' : '已取消首页展示')
   } catch (err) {
     console.error('设置首页展示失败', err)
+    row.showOnHome = !val
   }
 }
 

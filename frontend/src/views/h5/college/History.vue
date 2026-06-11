@@ -242,7 +242,7 @@ const fetchData = async () => {
   loading.value = true
   closeFilters()
   try {
-    const res = await auditApi.getAuditHistory({
+    const res = await auditApi.getHistory({
       page: pagination.value.current,
       size: pagination.value.pageSize,
       keyword: keyword.value || undefined,

@@ -29,7 +29,7 @@ public class ActivityVO {
     private LocalDateTime registrationEndTime;
 
     private String bannerUrl;
-
+    private List<String> bannerUrls;  // 多张轮播图
     private String videoUrl;
 
     private String coverImage;

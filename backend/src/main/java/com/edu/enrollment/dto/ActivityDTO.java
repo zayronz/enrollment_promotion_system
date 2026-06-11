@@ -37,6 +37,7 @@ public class ActivityDTO {
     private LocalDateTime registrationEndTime;
 
     private String bannerUrl;
+    private List<String> bannerUrls;  // 多张轮播图
     private String videoUrl;
     private String coverImage;
     private List<String> attachments;  // 附件路径列表

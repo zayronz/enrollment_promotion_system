@@ -43,6 +43,7 @@ CREATE TABLE `activity` (
                             `registration_start_time` DATETIME NOT NULL COMMENT '报名开始时间',
                             `registration_end_time` DATETIME NOT NULL COMMENT '报名结束时间',
                             `banner_url` VARCHAR(500) COMMENT '轮播图URL',
+                            `banner_urls` TEXT COMMENT '轮播图URL列表（JSON格式）',
                             `video_url` VARCHAR(500) COMMENT '视频URL',
                             `cover_image` VARCHAR(500) COMMENT '封面图',
                             `status` TINYINT DEFAULT 0 COMMENT '0-草稿 1-发布 2-已结束',

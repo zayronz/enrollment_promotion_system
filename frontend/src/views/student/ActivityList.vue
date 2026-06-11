@@ -230,24 +230,48 @@ const offlineActivities = computed(() =>
 const fetchActivities = async () => {
   loading.value = true
   try {
-    const params = {
-      page: currentPage.value,
-      size: pageSize.value,
-      keyword: keyword.value || undefined,
-      type: typeFilter.value || undefined
+    const res = await activityApi.getOpenActivities()
+    let allActivities = res.data?.records || res.data || []
+    
+    // 前端筛选
+    if (keyword.value) {
+      allActivities = allActivities.filter(a => 
+        a.name?.toLowerCase().includes(keyword.value.toLowerCase()) ||
+        a.description?.toLowerCase().includes(keyword.value.toLowerCase())
+      )
     }
-    const res = await activityApi.getOpenActivities(params)
-    activities.value = res.data?.records || res.data || []
-    total.value = res.data?.total || 0
-    // Fetch banners
-    const bannerRes = await activityApi.getActivityList({ page: 1, size: 5 })
-    banners.value = (bannerRes.data?.records || []).filter(a => a.bannerUrl)
-      .map(a => ({
-        activityId: a.id,
-        title: a.name,
-        description: a.description || '',
-        imageUrl: getFileUrl(a.bannerUrl)
-      }))
+    if (typeFilter.value !== '') {
+      allActivities = allActivities.filter(a => a.type === Number(typeFilter.value))
+    }
+    
+    // 分页
+    const start = (currentPage.value - 1) * pageSize.value
+    const end = start + pageSize.value
+    activities.value = allActivities.slice(start, end)
+    total.value = allActivities.length
+    
+    // Fetch banners (使用已获取的公开活动数据)
+    const bannerList = []
+    ;(res.data?.records || res.data || []).slice(0, 5).forEach(a => {
+      if (a.bannerUrls && a.bannerUrls.length) {
+        a.bannerUrls.forEach(url => {
+          bannerList.push({
+            activityId: a.id,
+            title: a.name,
+            description: a.description || '',
+            imageUrl: getFileUrl(url)
+          })
+        })
+      } else if (a.bannerUrl) {
+        bannerList.push({
+          activityId: a.id,
+          title: a.name,
+          description: a.description || '',
+          imageUrl: getFileUrl(a.bannerUrl)
+        })
+      }
+    })
+    banners.value = bannerList
   } catch (err) {
     console.error('获取活动列表失败', err)
   } finally {

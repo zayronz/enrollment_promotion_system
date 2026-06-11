@@ -12,7 +12,7 @@ import java.util.List;
 @Mapper
 public interface RegistrationMapper extends BaseMapper<RegistrationEntity> {
 
-    @Select("SELECT * FROM registration WHERE activity_id = #{activityId} AND user_id = #{userId}")
+    @Select("SELECT * FROM registration WHERE activity_id = #{activityId} AND user_id = #{userId} ORDER BY create_time DESC LIMIT 1")
     RegistrationEntity findByActivityAndUser(@Param("activityId") Long activityId,
                                              @Param("userId") Long userId);
 

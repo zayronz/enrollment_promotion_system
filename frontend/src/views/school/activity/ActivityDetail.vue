@@ -63,7 +63,15 @@
           </div>
 
           <!-- 轮播图/Banner -->
-          <div v-if="detail.bannerUrl" class="banner-section">
+          <div v-if="detail.bannerUrls && detail.bannerUrls.length" class="banner-section">
+            <h3 class="section-title">Banner 轮播图</h3>
+            <t-swiper :autoplay="true" class="banner-swiper">
+              <t-swiper-item v-for="(url, index) in detail.bannerUrls" :key="index">
+                <img :src="getFileUrl(url)" :alt="`轮播图${index + 1}`" class="banner-image" />
+              </t-swiper-item>
+            </t-swiper>
+          </div>
+          <div v-else-if="detail.bannerUrl" class="banner-section">
             <h3 class="section-title">Banner 轮播图</h3>
             <img :src="getFileUrl(detail.bannerUrl)" :alt="detail.name" class="banner-image" />
           </div>
@@ -173,8 +181,26 @@ const fetchDetail = async () => {
   loading.value = true
   try {
     const res = await activityApi.getActivityDetail(id.value)
+    console.log('活动详情响应:', res)
     if (res.code === 200 && res.data) {
       detail.value = res.data
+      console.log('活动详情数据:', detail.value)
+      console.log('封面图:', detail.value.coverImage)
+      console.log('轮播图:', detail.value.bannerUrls)
+      console.log('视频:', detail.value.videoUrl)
+      
+      // 测试图片URL
+      if (detail.value.coverImage) {
+        console.log('封面图URL:', getFileUrl(detail.value.coverImage))
+      }
+      if (detail.value.bannerUrls && detail.value.bannerUrls.length > 0) {
+        detail.value.bannerUrls.forEach((url, idx) => {
+          console.log(`轮播图${idx + 1} URL:`, getFileUrl(url))
+        })
+      }
+      if (detail.value.videoUrl) {
+        console.log('视频URL:', getFileUrl(detail.value.videoUrl))
+      }
     }
   } catch (err) {
     console.error('获取活动详情失败', err)
@@ -202,7 +228,8 @@ onMounted(fetchDetail)
 
 .video-section .video-player { width: 100%; max-height: 400px; border-radius: 8px; }
 .desc-section .desc-content { line-height: 1.8; color: var(--td-text-color-secondary); }
-.banner-section .banner-image { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; }
+.banner-section .banner-swiper { border-radius: 8px; overflow: hidden; }
+.banner-section .banner-image { width: 100%; max-height: 300px; object-fit: cover; }
 
 .link-section { margin-bottom: 24px; }
 

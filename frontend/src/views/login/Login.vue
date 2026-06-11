@@ -428,6 +428,7 @@ const handleLogin = async (e) => {
   justify-content: center;
   gap: 6px;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
 }
 .test-label {

@@ -11,8 +11,8 @@ export const auditApi = {
         return request.post('/audit/batch', data)
     },
 
-    // 获取审核历史记录
-    getAuditHistory(params = {}) {
+    // 获取审核历史
+    getHistory(params = {}) {
         return request.get('/audit/history', { params })
     }
 }

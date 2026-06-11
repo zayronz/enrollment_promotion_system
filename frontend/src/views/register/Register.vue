@@ -430,6 +430,7 @@ onMounted(() => {
   background: var(--td-bg-color-secondarycontainer);
   cursor: pointer;
   transition: all 0.25s ease;
+  -webkit-user-select: none;
   user-select: none;
 }
 
