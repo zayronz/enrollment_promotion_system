@@ -53,5 +53,15 @@ export const userApi = {
     // 忘记密码
     forgotPassword(data) {
         return request.post('/user/forgot-password', data)
+    },
+
+    // 发送忘记密码邮箱验证码
+    sendForgotPasswordCode(data) {
+        return request.post('/user/forgot-password/code', data)
+    },
+
+    // 验证忘记密码邮箱验证码
+    verifyForgotPasswordCode(data) {
+        return request.post('/user/forgot-password/verify', data)
     }
 }

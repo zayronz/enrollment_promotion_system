@@ -31,7 +31,15 @@ const routes = [
             { path: 'student/activity/:id', name: 'StudentActivityDetail', component: () => import('@/views/student/ActivityDetail.vue') },
             { path: 'student/register/:id', name: 'RegistrationForm', component: () => import('@/views/student/RegistrationForm.vue') },
             { path: 'student/my-registrations', name: 'MyRegistrations', component: () => import('@/views/student/MyRegistrations.vue') },
-            { path: 'student/feedbacks', name: 'StudentFeedbacks', component: () => import('@/views/student/MyFeedbacks.vue') }
+            { path: 'student/feedbacks', name: 'StudentFeedbacks', component: () => import('@/views/student/MyFeedbacks.vue') },
+            { path: 'student/test', name: 'StudentTestList', component: () => import('@/views/h5/test/TestList.vue') },
+            { path: 'student/test/start/:id', name: 'StudentTestStart', component: () => import('@/views/h5/test/TestStart.vue') },
+            { path: 'student/test/questions/:id', name: 'StudentTestQuestions', component: () => import('@/views/h5/test/TestQuestions.vue') },
+            { path: 'student/test/result/:id', name: 'StudentTestResult', component: () => import('@/views/h5/test/TestResult.vue') },
+            { path: 'student/my-activity', name: 'StudentMyActivity', component: () => import('@/views/h5/myActivity/MyActivity.vue') },
+            { path: 'student/my-activity/:id', name: 'StudentMyActivityDetail', component: () => import('@/views/h5/myActivity/MyActivityDetail.vue') },
+            { path: 'student/team', name: 'StudentTeam', component: () => import('@/views/h5/team/MyTeam.vue') },
+            { path: 'student/materials', name: 'StudentMaterials', component: () => import('@/views/h5/materials/Materials.vue') }
         ]
     },
     {
@@ -44,7 +52,17 @@ const routes = [
             { path: 'activity/:id', name: 'TeacherActivityDetail', component: () => import('@/views/teacher/ActivityDetail.vue') },
             { path: 'register/:id', name: 'TeacherRegistrationForm', component: () => import('@/views/teacher/RegistrationForm.vue') },
             { path: 'my-registrations', name: 'TeacherMyRegistrations', component: () => import('@/views/teacher/MyRegistrations.vue') },
-            { path: 'feedbacks', name: 'TeacherFeedbacks', component: () => import('@/views/student/MyFeedbacks.vue') }
+            { path: 'feedbacks', name: 'TeacherFeedbacks', component: () => import('@/views/student/MyFeedbacks.vue') },
+            { path: 'test', name: 'TeacherTestList', component: () => import('@/views/h5/test/TestList.vue') },
+            { path: 'test/start/:id', name: 'TeacherTestStart', component: () => import('@/views/h5/test/TestStart.vue') },
+            { path: 'test/questions/:id', name: 'TeacherTestQuestions', component: () => import('@/views/h5/test/TestQuestions.vue') },
+            { path: 'test/result/:id', name: 'TeacherTestResult', component: () => import('@/views/h5/test/TestResult.vue') },
+            { path: 'my-activity', name: 'TeacherMyActivity', component: () => import('@/views/h5/myActivity/MyActivity.vue') },
+            { path: 'my-activity/:id', name: 'TeacherMyActivityDetail', component: () => import('@/views/h5/myActivity/MyActivityDetail.vue') },
+            { path: 'team', name: 'TeacherTeam', component: () => import('@/views/h5/team/MyTeam.vue') },
+            { path: 'approval', name: 'TeacherApprovalList', component: () => import('@/views/h5/approval/ApprovalList.vue') },
+            { path: 'approval/:id', name: 'TeacherApprovalDetail', component: () => import('@/views/h5/approval/ApprovalDetail.vue') },
+            { path: 'materials', name: 'TeacherMaterials', component: () => import('@/views/h5/materials/Materials.vue') }
         ]
     },
     {
@@ -72,7 +90,8 @@ const routes = [
             { path: 'activity/detail/:id', name: 'ActivityDetail', component: () => import('@/views/school/activity/ActivityDetail.vue') },
             { path: 'audit/pending', name: 'SchoolPendingAudit', component: () => import('@/views/school/audit/PendingAudit.vue') },
             { path: 'user/list', name: 'UserList', component: () => import('@/views/school/user/UserList.vue') },
-            { path: 'feedback/list', name: 'AllFeedbacks', component: () => import('@/views/school/feedback/AllFeedbacks.vue') }
+            { path: 'feedback/list', name: 'AllFeedbacks', component: () => import('@/views/school/feedback/AllFeedbacks.vue') },
+            { path: 'materials', name: 'SchoolMaterials', component: () => import('@/views/h5/materials/Materials.vue') }
         ]
     },
     {
@@ -89,9 +108,21 @@ const routes = [
         meta: { requiresAuth: false }
     },
     {
+        path: '/h5/forgot-password',
+        name: 'H5ForgotPassword',
+        component: () => import('@/views/login/ForgotPassword.vue'),
+        meta: { requiresAuth: false }
+    },
+    {
+        path: '/h5/register',
+        name: 'H5Register',
+        component: () => import('@/views/register/Register.vue'),
+        meta: { requiresAuth: false }
+    },
+    {
         path: '/h5',
         component: () => import('@/views/h5/components/H5Layout.vue'),
-        meta: { requiresAuth: false },
+        meta: { requiresAuth: true },
         children: [
             { path: '', redirect: '/h5/home' },
             { path: 'home', name: 'H5Home', component: () => import('@/views/h5/home/Home.vue') },
@@ -148,6 +179,66 @@ const router = createRouter({
     routes
 })
 
+const roleHome = (role, mobile = false) => {
+    if (mobile) {
+        const h5Map = {
+            STUDENT: '/h5/home',
+            TEACHER: '/h5/teacher/activities',
+            COLLEGE: '/h5/college/pending',
+            SCHOOL: '/h5/school/dashboard'
+        }
+        return h5Map[role] || '/h5/home'
+    }
+    const pcMap = {
+        STUDENT: '/student/activities',
+        TEACHER: '/teacher/activities',
+        COLLEGE: '/college/pending',
+        SCHOOL: '/school/dashboard'
+    }
+    return pcMap[role] || '/login'
+}
+
+const toMobilePath = (path) => {
+    const exactMap = {
+        '/register': '/h5/register',
+        '/forgot-password': '/h5/forgot-password',
+        '/profile': '/h5/profile',
+        '/student/activities': '/h5/home',
+        '/student/my-registrations': '/h5/my-registrations',
+        '/student/feedbacks': '/h5/my-feedbacks',
+        '/student/test': '/h5/test',
+        '/student/my-activity': '/h5/my-activity',
+        '/student/team': '/h5/team',
+        '/student/materials': '/h5/materials',
+        '/teacher/activities': '/h5/teacher/activities',
+        '/teacher/my-registrations': '/h5/teacher/my-registrations',
+        '/teacher/feedbacks': '/h5/my-feedbacks',
+        '/teacher/test': '/h5/test',
+        '/teacher/team': '/h5/team',
+        '/teacher/approval': '/h5/approval',
+        '/teacher/materials': '/h5/materials',
+        '/college/pending': '/h5/college/pending',
+        '/college/history': '/h5/college/history',
+        '/college/feedback': '/h5/college/feedback',
+        '/school/dashboard': '/h5/school/dashboard',
+        '/school/activity/list': '/h5/school/activity-list',
+        '/school/audit/pending': '/h5/school/audit-pending',
+        '/school/user/list': '/h5/school/user-list',
+        '/school/feedback/list': '/h5/school/feedback-list',
+        '/school/materials': '/h5/materials'
+    }
+    if (exactMap[path]) return exactMap[path]
+    if (path.startsWith('/student/activity/')) return path.replace('/student/activity/', '/h5/activity/')
+    if (path.startsWith('/teacher/activity/')) return path.replace('/teacher/activity/', '/h5/activity/')
+    if (path.startsWith('/student/register/')) return path.replace('/student/register/', '/h5/register/')
+    if (path.startsWith('/teacher/register/')) return path.replace('/teacher/register/', '/h5/register/')
+    if (path.startsWith('/student/test/start/')) return path.replace('/student/test/start/', '/h5/test/start/')
+    if (path.startsWith('/student/test/questions/')) return path.replace('/student/test/questions/', '/h5/test/questions/')
+    if (path.startsWith('/student/test/result/')) return path.replace('/student/test/result/', '/h5/test/result/')
+    if (path.startsWith('/student/my-activity/')) return path.replace('/student/my-activity/', '/h5/my-activity/')
+    return null
+}
+
 // 路由守卫
 router.beforeEach(async (to, from, next) => {
     const userStore = useUserStore()
@@ -166,27 +257,23 @@ router.beforeEach(async (to, from, next) => {
         return
     }
 
-    // 如果访问H5登录页且是桌面端设备，自动重定向到PC登录页
-    if (to.path === '/h5/login' && !deviceIsMobile && !userStore.isLoggedIn) {
-        next('/login')
-        return
-    }
-
     if (requiresAuth && !userStore.isLoggedIn) {
         // H5 页面未登录跳转到 H5 登录页
         next(isH5Page ? '/h5/login' : '/login')
         return
     }
 
+    if (userStore.isLoggedIn && deviceIsMobile && !isH5Page) {
+        const mobilePath = toMobilePath(to.path)
+        if (mobilePath) {
+            next(mobilePath)
+            return
+        }
+    }
+
     if (requiredRole && userStore.role !== requiredRole) {
         // 根据角色重定向
-        const roleMap = {
-            'STUDENT': '/',
-            'TEACHER': '/teacher',
-            'COLLEGE': '/college',
-            'SCHOOL': '/school'
-        }
-        next(roleMap[userStore.role] || '/login')
+        next(roleHome(userStore.role, deviceIsMobile))
         return
     }
 

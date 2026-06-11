@@ -3,7 +3,9 @@ package com.edu.enrollment.service;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.edu.enrollment.dto.ForgotPasswordCodeDTO;
 import com.edu.enrollment.dto.ForgotPasswordDTO;
+import com.edu.enrollment.dto.ForgotPasswordVerifyDTO;
 import com.edu.enrollment.dto.PasswordChangeDTO;
 import com.edu.enrollment.dto.UserDTO;
 import com.edu.enrollment.dto.UserRegisterDTO;
@@ -16,11 +18,19 @@ import com.edu.enrollment.mapper.UserMapper;
 import com.edu.enrollment.utils.JwtUtil;
 import com.edu.enrollment.vo.UserVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +40,23 @@ public class UserService {
     private final CollegeMapper collegeMapper;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username:}")
+    private String mailFrom;
+
+    private static final long RESET_CODE_VALID_MINUTES = 10L;
+    private static final Map<String, ResetCodeInfo> RESET_CODE_CACHE = new ConcurrentHashMap<>();
+
+    private static class ResetCodeInfo {
+        private final String code;
+        private final LocalDateTime expireTime;
+
+        private ResetCodeInfo(String code, LocalDateTime expireTime) {
+            this.code = code;
+            this.expireTime = expireTime;
+        }
+    }
 
     public String login(String username, String password) {
         UserEntity user = userMapper.findByUsername(username);
@@ -211,28 +238,91 @@ public class UserService {
     }
 
     /**
-     * 忘记密码 - 通过用户名+邮箱验证身份后重置密码
+     * 忘记密码 - 发送邮箱验证码
+     */
+    public void sendForgotPasswordCode(ForgotPasswordCodeDTO dto) {
+        UserEntity user = userMapper.findByUsername(dto.getUsername());
+        validateResetUser(user, dto.getEmail(), true);
+
+        if (StrUtil.isBlank(mailFrom)) {
+            throw new BusinessException("系统未配置发件邮箱，请联系管理员");
+        }
+
+        String code = String.format("%06d", new Random().nextInt(1000000));
+        String cacheKey = buildResetCodeKey(dto.getUsername(), dto.getEmail());
+        RESET_CODE_CACHE.put(cacheKey, new ResetCodeInfo(code, LocalDateTime.now().plusMinutes(RESET_CODE_VALID_MINUTES)));
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(mailFrom);
+        message.setTo(dto.getEmail());
+        message.setSubject("招生宣传报名系统密码重置验证码");
+        message.setText("您的密码重置验证码为：" + code + "\n\n验证码有效期为 "
+                + RESET_CODE_VALID_MINUTES + " 分钟。如非本人操作，请忽略本邮件。");
+
+        try {
+            mailSender.send(message);
+        } catch (MailException e) {
+            RESET_CODE_CACHE.remove(cacheKey);
+            throw new BusinessException("验证码发送失败，请检查邮箱配置或稍后重试", e);
+        }
+    }
+
+    /**
+     * 忘记密码 - 仅校验邮箱验证码，校验成功后前端再进入设置新密码步骤
+     */
+    public void verifyForgotPasswordCode(ForgotPasswordVerifyDTO dto) {
+        UserEntity user = userMapper.findByUsername(dto.getUsername());
+        validateResetUser(user, dto.getEmail(), false);
+        validateResetCode(dto.getUsername(), dto.getEmail(), dto.getCode(), false);
+    }
+
+    /**
+     * 忘记密码 - 校验邮箱验证码后重置密码
      */
     @Transactional
     public void forgotPassword(ForgotPasswordDTO dto) {
-        // 通过用户名查找用户
         UserEntity user = userMapper.findByUsername(dto.getUsername());
+        validateResetUser(user, dto.getEmail(), false);
+        validateResetCode(dto.getUsername(), dto.getEmail(), dto.getCode(), true);
+
+        user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+        userMapper.updateById(user);
+    }
+
+    private void validateResetUser(UserEntity user, String email, boolean forSend) {
         if (user == null) {
             throw new BusinessException("用户名不存在");
         }
 
-        // 验证邮箱是否匹配
-        if (user.getEmail() == null || !user.getEmail().equals(dto.getEmail())) {
-            throw new BusinessException("邮箱验证失败，请检查后重试");
+        if (user.getEmail() == null || !user.getEmail().equals(email)) {
+            throw new BusinessException("邮箱与账号绑定信息不匹配");
         }
 
-        // 检查用户状态
         if (user.getStatus() != 1) {
-            throw new BusinessException("该账号已被禁用，无法重置密码");
+            throw new BusinessException(forSend ? "该账号已被禁用，无法发送验证码" : "该账号已被禁用，无法重置密码");
+        }
+    }
+
+    private void validateResetCode(String username, String email, String code, boolean removeAfterSuccess) {
+        String cacheKey = buildResetCodeKey(username, email);
+        ResetCodeInfo codeInfo = RESET_CODE_CACHE.get(cacheKey);
+        if (codeInfo == null) {
+            throw new BusinessException("请先获取邮箱验证码");
+        }
+        if (LocalDateTime.now().isAfter(codeInfo.expireTime)) {
+            RESET_CODE_CACHE.remove(cacheKey);
+            throw new BusinessException("验证码已过期，请重新获取");
+        }
+        if (!codeInfo.code.equals(code)) {
+            throw new BusinessException("验证码错误");
         }
 
-        // 重置密码
-        user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
-        userMapper.updateById(user);
+        if (removeAfterSuccess) {
+            RESET_CODE_CACHE.remove(cacheKey);
+        }
+    }
+
+    private String buildResetCodeKey(String username, String email) {
+        return username.trim().toLowerCase() + ":" + email.trim().toLowerCase();
     }
 }

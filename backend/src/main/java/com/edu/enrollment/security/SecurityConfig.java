@@ -39,7 +39,7 @@ public class SecurityConfig {
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 .authorizeHttpRequests()
-                .antMatchers("/api/user/login", "/api/user/register", "/api/user/forgot-password", "/api/activity/open", "/api/file/view/**").permitAll()
+                .antMatchers("/api/user/login", "/api/user/register", "/api/user/forgot-password", "/api/user/forgot-password/code", "/api/user/forgot-password/verify", "/api/activity/open", "/api/file/view/**").permitAll()
                 .anyRequest().authenticated()
                 .and()
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

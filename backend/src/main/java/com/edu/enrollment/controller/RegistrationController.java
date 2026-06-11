@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/registration")
@@ -31,6 +32,16 @@ public class RegistrationController {
         return ResultVO.success(registrationService.getMyRegistrations(userId, page, size));
     }
 
+    @GetMapping("/my-teams")
+    public ResultVO<?> myTeams(@CurrentUserId Long userId) {
+        return ResultVO.success(registrationService.getMyTeams(userId));
+    }
+
+    @GetMapping("/available-teams")
+    public ResultVO<?> availableTeams(@CurrentUserId Long userId) {
+        return ResultVO.success(registrationService.getAvailableTeams(userId));
+    }
+
     @GetMapping("/{id}")
     public ResultVO<?> detail(@PathVariable Long id) {
         return ResultVO.success(registrationService.getDetail(id));
@@ -40,6 +51,21 @@ public class RegistrationController {
     public ResultVO<?> withdraw(@PathVariable Long id,
                                 @CurrentUserId Long userId) {
         registrationService.withdraw(id, userId);
+        return ResultVO.success();
+    }
+
+    @PutMapping("/{id}/exit-team")
+    public ResultVO<?> exitTeam(@PathVariable Long id,
+                                @CurrentUserId Long userId) {
+        registrationService.exitTeam(id, userId);
+        return ResultVO.success();
+    }
+
+    @PutMapping("/{id}/join-team")
+    public ResultVO<?> joinTeam(@PathVariable Long id,
+                                @RequestBody Map<String, String> body,
+                                @CurrentUserId Long userId) {
+        registrationService.joinTeam(id, body.get("groupName"), userId);
         return ResultVO.success();
     }
 

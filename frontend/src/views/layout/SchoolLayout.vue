@@ -71,6 +71,10 @@
               全部反馈
             </t-menu-item>
           </t-submenu>
+          <t-menu-item value="/school/materials">
+            <template #icon><FileIcon /></template>
+            招宣资料
+          </t-menu-item>
         </t-menu>
       </t-aside>
       <t-content class="app-content">
