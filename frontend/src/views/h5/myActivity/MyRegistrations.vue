@@ -65,6 +65,10 @@
               </t-tag>
             </div>
             <div class="info-item">
+              <span class="info-key">审批进度</span>
+              <span class="info-val">{{ auditProgress || '-' }}</span>
+            </div>
+            <div class="info-item">
               <span class="info-key">目标学校</span>
               <span class="info-val">{{ currentRecord.targetSchool || '-' }}</span>
             </div>
@@ -82,13 +86,56 @@
             </div>
           </div>
 
+          <div v-if="activityDetail" class="custom-fields">
+            <div class="section-title">活动详情</div>
+            <div class="field-list">
+              <div class="field-item">
+                <span class="field-label">活动时间：</span>
+                <span class="field-value">{{ formatDateTime(activityDetail.activityStartTime) }} 至 {{ formatDateTime(activityDetail.activityEndTime) }}</span>
+              </div>
+              <div class="field-item">
+                <span class="field-label">报名时间：</span>
+                <span class="field-value">{{ formatDateTime(activityDetail.registrationStartTime) }} 至 {{ formatDateTime(activityDetail.registrationEndTime) }}</span>
+              </div>
+              <div class="field-item">
+                <span class="field-label">活动地点：</span>
+                <span class="field-value">{{ activityDetail.location || '-' }}</span>
+              </div>
+              <div class="field-item">
+                <span class="field-label">活动介绍：</span>
+                <span class="field-value" v-html="activityDetail.description || '-'"></span>
+              </div>
+            </div>
+          </div>
+
           <!-- Custom fields -->
           <div v-if="customFields.length > 0" class="custom-fields">
             <div class="section-title">填报信息</div>
             <div class="field-list">
               <div v-for="(field, index) in customFields" :key="index" class="field-item">
-                <span class="field-label">{{ field.label }}：</span>
+                <span class="field-label">{{ field.label || field.name }}：</span>
                 <span class="field-value">{{ field.value || '-' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attachments -->
+          <div v-if="attachments.length > 0" class="custom-fields">
+            <div class="section-title">报名附件</div>
+            <div class="field-list">
+              <div v-for="(file, index) in attachments" :key="index" class="field-item attachment-item" @click="openAttachment(file)">
+                <span class="field-label">附件{{ index + 1 }}：</span>
+                <span class="field-value attachment-link">{{ getAttachmentName(file) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="teamMembers.length > 0" class="custom-fields">
+            <div class="section-title">当前分组成员</div>
+            <div class="field-list">
+              <div v-for="member in teamMembers" :key="member.registrationId" class="member-card-mini">
+                <div class="member-title">{{ member.realName || '-' }} <span>#{{ member.groupRank || '-' }}</span></div>
+                <div class="member-desc">{{ member.role || '-' }} · {{ member.phone || '-' }}</div>
               </div>
             </div>
           </div>
@@ -110,6 +157,22 @@
               </div>
             </div>
           </div>
+
+          <div v-if="feedbacks.length > 0" class="audit-timeline">
+            <div class="section-title">工作反馈</div>
+            <div class="timeline-list">
+              <div v-for="fb in feedbacks" :key="fb.id" class="timeline-item">
+                <div class="timeline-dot success"></div>
+                <div class="timeline-content">
+                  <div class="timeline-user">{{ fb.title || '反馈' }}</div>
+                  <div class="timeline-action">
+                    {{ fb.userName || '反馈人' }}：<span v-html="fb.content || '-'"></span>
+                  </div>
+                  <div class="timeline-time">{{ formatDateTime(fb.createTime) }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </t-popup>
@@ -120,6 +183,7 @@
 import { ref, onMounted } from 'vue'
 import { registrationApi } from '@/api/registeration'
 import { MessagePlugin } from 'tdesign-vue-next'
+import { getFileUrl } from '@/utils/file'
 import H5NavBar from '../components/H5NavBar.vue'
 
 const loading = ref(false)
@@ -127,7 +191,12 @@ const records = ref([])
 const detailVisible = ref(false)
 const currentRecord = ref(null)
 const customFields = ref([])
+const attachments = ref([])
 const auditLogs = ref([])
+const activityDetail = ref(null)
+const teamMembers = ref([])
+const feedbacks = ref([])
+const auditProgress = ref('')
 
 const fetchRegistrations = async () => {
   loading.value = true
@@ -147,11 +216,21 @@ const showDetail = async (row) => {
     const res = await registrationApi.getRegistrationDetail(row.id)
     const detail = res.data
     customFields.value = detail.customFields || []
+    attachments.value = detail.attachments || []
     auditLogs.value = detail.auditLogs || []
+    activityDetail.value = detail.activityDetail || null
+    teamMembers.value = detail.teamMembers || []
+    feedbacks.value = detail.feedbacks || []
+    auditProgress.value = detail.auditProgress || ''
   } catch (err) {
     console.error('获取详情失败', err)
     customFields.value = []
+    attachments.value = []
     auditLogs.value = []
+    activityDetail.value = null
+    teamMembers.value = []
+    feedbacks.value = []
+    auditProgress.value = ''
   }
   detailVisible.value = true
 }
@@ -170,8 +249,27 @@ const onPopupChange = (visible) => {
   if (!visible) {
     currentRecord.value = null
     customFields.value = []
+    attachments.value = []
     auditLogs.value = []
+    activityDetail.value = null
+    teamMembers.value = []
+    feedbacks.value = []
+    auditProgress.value = ''
   }
+}
+
+const getAttachmentName = (file) => {
+  const path = typeof file === 'string' ? file : (file?.filePath || file?.url || '')
+  return path ? path.split('/').pop() : '附件文件'
+}
+
+const openAttachment = (file) => {
+  const path = typeof file === 'string' ? file : (file?.filePath || file?.url)
+  if (!path) {
+    MessagePlugin.warning('附件地址不存在')
+    return
+  }
+  window.open(getFileUrl(path), '_blank')
 }
 
 const formatDateTime = (str) => {
@@ -381,6 +479,34 @@ onMounted(fetchRegistrations)
   flex: 1;
   margin-left: 8px;
   word-break: break-word;
+}
+.attachment-item {
+  cursor: pointer;
+}
+.attachment-link {
+  color: #2563eb;
+}
+.member-card-mini {
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.member-card-mini:last-child {
+  border-bottom: none;
+}
+.member-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+.member-title span {
+  color: #2563eb;
+  font-size: 12px;
+  margin-left: 6px;
+}
+.member-desc {
+  font-size: 12px;
+  color: #6b7280;
 }
 
 .timeline-list {

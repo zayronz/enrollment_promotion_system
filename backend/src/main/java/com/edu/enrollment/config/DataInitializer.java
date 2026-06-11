@@ -24,16 +24,11 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         try {
-            log.info("开始初始化测试用户数据...");
-
             // 强制更新测试账号密码（确保密码正确）
             upsertUser("admin", "系统管理员", "SCHOOL", null, null, null);
             upsertUser("student", "测试学生", "STUDENT", 1L, 2023, 3.5);
             upsertUser("teacher", "测试教师", "TEACHER", 1L, null, null);
             upsertUser("college", "学院管理员", "COLLEGE", 1L, null, null);
-
-            log.info("测试用户数据初始化完成！");
-            log.info("所有测试账号的密码统一为：123456");
         } catch (Exception e) {
             log.error("初始化用户数据时出错", e);
         }
@@ -64,12 +59,10 @@ public class DataInitializer implements CommandLineRunner {
             }
             user.setStatus(1);
             userMapper.insert(user);
-            log.info("已创建测试账号: {} / 123456 ({})", username, realName);
         } else {
             // 用户已存在，更新密码确保可以登录
             existingUser.setPassword(encodedPassword);
             userMapper.updateById(existingUser);
-            log.info("已更新测试账号密码: {} / 123456", username);
         }
     }
 }

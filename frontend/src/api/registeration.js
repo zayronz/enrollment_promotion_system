@@ -6,6 +6,16 @@ export const registrationApi = {
         return request.post('/registration/submit', data)
     },
 
+    // 查询当前用户对某活动的报名状态
+    getRegistrationStatus(activityId) {
+        return request.get('/registration/status', { params: { activityId } })
+    },
+
+    // 学校名称模糊联想
+    getSchoolSuggestions(params = {}) {
+        return request.get('/registration/school-suggestions', { params })
+    },
+
     // 获取我的报名列表（支持分页参数）
     getMyRegistrations(params = {}) {
         return request.get('/registration/my', { params })

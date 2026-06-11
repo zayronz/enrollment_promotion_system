@@ -120,9 +120,8 @@ const fetchDetail = async () => {
     activity.value = res.data
 
     try {
-      const regRes = await registrationApi.getMyRegistrations()
-      const myRecords = regRes.data?.records || []
-      alreadyRegistered.value = myRecords.some(r => r.activityId === activity.value.id)
+      const statusRes = await registrationApi.getRegistrationStatus(activity.value.id)
+      alreadyRegistered.value = !!statusRes.data?.registered
     } catch (e) {
       console.error(e)
     }

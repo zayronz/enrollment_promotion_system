@@ -119,11 +119,10 @@ const fetchDetail = async () => {
     const res = await activityApi.getActivityDetail(route.params.id)
     activity.value = res.data
 
-    // Check if already registered
+    // 检查当前用户是否已报名
     try {
-      const regRes = await registrationApi.getMyRegistrations({ page: 1, size: 100 })
-      const myRecords = regRes.data?.records || []
-      alreadyRegistered.value = myRecords.some(r => r.activityId === activity.value.id)
+      const statusRes = await registrationApi.getRegistrationStatus(activity.value.id)
+      alreadyRegistered.value = !!statusRes.data?.registered
     } catch (e) {
       console.error(e)
     }

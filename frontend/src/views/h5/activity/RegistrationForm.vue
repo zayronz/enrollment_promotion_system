@@ -11,6 +11,20 @@
       </div>
 
       <div class="form-card">
+        <div class="basic-info">
+          <div class="basic-title">报名人基本信息</div>
+          <div class="basic-row"><span>姓名</span><strong>{{ userStore.realName || '-' }}</strong></div>
+          <div class="basic-row"><span>手机号</span><strong>{{ userStore.userInfo?.phone || '-' }}</strong></div>
+          <div class="basic-row"><span>邮箱</span><strong>{{ userStore.userInfo?.email || '-' }}</strong></div>
+        </div>
+
+        <t-alert
+          v-if="registrationStatus.message && !registrationStatus.canRegister"
+          theme="warning"
+          :message="registrationStatus.message"
+          style="margin-bottom: 16px"
+        />
+
         <t-form
           ref="formRef"
           :data="formData"
@@ -20,8 +34,9 @@
         >
           <!-- Target school with autocomplete -->
           <t-form-item label="目标学校" name="targetSchool">
-            <t-input
+            <t-auto-complete
               v-model="formData.targetSchool"
+              :options="schoolSuggestions"
               placeholder="请输入招生对象学校名称"
               clearable
             />
@@ -89,8 +104,8 @@
           </t-form-item>
 
           <t-form-item>
-            <t-button theme="primary" type="submit" size="large" :loading="submitting" block>
-              确认提交
+            <t-button theme="primary" type="submit" size="large" :loading="submitting" :disabled="!registrationStatus.canRegister" block>
+              {{ registrationStatus.registered ? '已报名' : '确认提交' }}
             </t-button>
             <t-button theme="default" variant="outline" size="large" @click="$router.back()" block style="margin-top: 12px;">
               返回
@@ -105,16 +120,18 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { activityApi } from '@/api/activity'
 import { registrationApi } from '@/api/registeration'
 import { getToken } from '@/utils/auth'
+import { useUserStore } from '@/store/modules/user'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import H5NavBar from '../components/H5NavBar.vue'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const formRef = ref(null)
 const activity = ref(null)
@@ -122,6 +139,14 @@ const loading = ref(true)
 const submitting = ref(false)
 const customFields = ref([])
 const fileList = ref([])
+const schoolSuggestions = ref([])
+const schoolSearchTimer = ref(null)
+const schoolSearchSeq = ref(0)
+const registrationStatus = reactive({
+  registered: false,
+  canRegister: true,
+  message: ''
+})
 
 const uploadUrl = '/api/file/upload'
 const uploadHeaders = computed(() => ({
@@ -139,8 +164,12 @@ const rules = {
 const fetchActivity = async () => {
   loading.value = true
   try {
-    const res = await activityApi.getActivityDetail(route.params.id)
+    const [res, statusRes] = await Promise.all([
+      activityApi.getActivityDetail(route.params.id),
+      registrationApi.getRegistrationStatus(route.params.id)
+    ])
     activity.value = res.data
+    Object.assign(registrationStatus, statusRes.data || {})
     customFields.value = res.data.customFields || []
 
     // Init custom field data
@@ -154,8 +183,38 @@ const fetchActivity = async () => {
   }
 }
 
+const handleSchoolInput = (value) => {
+  const keyword = String(value || '').trim()
+  if (schoolSearchTimer.value) {
+    clearTimeout(schoolSearchTimer.value)
+  }
+  if (!keyword) {
+    schoolSuggestions.value = []
+    return
+  }
+  schoolSearchTimer.value = setTimeout(async () => {
+    const currentSeq = ++schoolSearchSeq.value
+    try {
+      const res = await registrationApi.getSchoolSuggestions({
+        activityId: route.params.id,
+        keyword
+      })
+      if (currentSeq !== schoolSearchSeq.value) return
+      schoolSuggestions.value = (res.data || []).map(item => ({ label: item, value: item }))
+    } catch (err) {
+      if (currentSeq === schoolSearchSeq.value) {
+        schoolSuggestions.value = []
+      }
+    }
+  }, 300)
+}
+
 const handleSubmit = async (e) => {
   if (e && e.preventDefault) e.preventDefault()
+  if (!registrationStatus.canRegister) {
+    MessagePlugin.warning(registrationStatus.message || '当前无法报名')
+    return
+  }
 
   const valid = await formRef.value.validate()
   if (valid !== true) return
@@ -173,6 +232,7 @@ const handleSubmit = async (e) => {
           targetSchool: formData.targetSchool,
           customFields: customFields.value.map((field, index) => ({
             name: field.name,
+            type: field.type,
             value: formData['custom_' + index]
           })),
           fileIds: fileList.value.map(f => f.response?.data || f.url).filter(Boolean)
@@ -190,6 +250,16 @@ const handleSubmit = async (e) => {
 }
 
 onMounted(fetchActivity)
+
+watch(() => formData.targetSchool, (value) => {
+  handleSchoolInput(value)
+})
+
+onBeforeUnmount(() => {
+  if (schoolSearchTimer.value) {
+    clearTimeout(schoolSearchTimer.value)
+  }
+})
 </script>
 
 <style scoped>
@@ -228,5 +298,28 @@ onMounted(fetchActivity)
   background: #fff;
   border-radius: 12px;
   padding: 20px;
+}
+.basic-info {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.basic-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+.basic-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 26px;
+}
+.basic-row strong {
+  color: #111827;
+  font-weight: 500;
 }
 </style>

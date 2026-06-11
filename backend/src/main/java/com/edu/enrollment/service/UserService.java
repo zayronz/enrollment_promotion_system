@@ -18,6 +18,7 @@ import com.edu.enrollment.mapper.UserMapper;
 import com.edu.enrollment.utils.JwtUtil;
 import com.edu.enrollment.vo.UserVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
@@ -34,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     private final UserMapper userMapper;
@@ -44,6 +46,9 @@ public class UserService {
 
     @Value("${spring.mail.username:}")
     private String mailFrom;
+
+    @Value("${spring.mail.password:}")
+    private String mailPassword;
 
     private static final long RESET_CODE_VALID_MINUTES = 10L;
     private static final Map<String, ResetCodeInfo> RESET_CODE_CACHE = new ConcurrentHashMap<>();
@@ -171,12 +176,37 @@ public class UserService {
         user.setEmail(dto.getEmail());
         user.setPhone(dto.getPhone());
         user.setRole(dto.getRole());
-        user.setCollegeId(dto.getCollegeId());
+        user.setCollegeId(resolveCollegeId(dto.getCollegeId(), dto.getCollegeName()));
         user.setGrade(dto.getGrade());
         user.setGpa(dto.getGpa());
         user.setStatus(1);
 
         userMapper.insert(user);
+    }
+
+    private Long resolveCollegeId(Long collegeId, String collegeName) {
+        if (collegeId != null) {
+            return collegeId;
+        }
+        if (StrUtil.isBlank(collegeName)) {
+            throw new BusinessException("学院不能为空");
+        }
+
+        String name = collegeName.trim();
+        CollegeEntity existCollege = collegeMapper.selectOne(
+                new LambdaQueryWrapper<CollegeEntity>()
+                        .eq(CollegeEntity::getName, name)
+                        .last("LIMIT 1")
+        );
+        if (existCollege != null) {
+            return existCollege.getId();
+        }
+
+        CollegeEntity college = new CollegeEntity();
+        college.setName(name);
+        college.setCode("C" + System.currentTimeMillis());
+        collegeMapper.insert(college);
+        return college.getId();
     }
 
     @Transactional
@@ -244,13 +274,15 @@ public class UserService {
         UserEntity user = userMapper.findByUsername(dto.getUsername());
         validateResetUser(user, dto.getEmail(), true);
 
-        if (StrUtil.isBlank(mailFrom)) {
-            throw new BusinessException("系统未配置发件邮箱，请联系管理员");
-        }
-
         String code = String.format("%06d", new Random().nextInt(1000000));
         String cacheKey = buildResetCodeKey(dto.getUsername(), dto.getEmail());
         RESET_CODE_CACHE.put(cacheKey, new ResetCodeInfo(code, LocalDateTime.now().plusMinutes(RESET_CODE_VALID_MINUTES)));
+
+        if (StrUtil.isBlank(mailFrom) || StrUtil.isBlank(mailPassword)) {
+            log.warn("系统未完整配置发件邮箱，已启用本地开发验证码。账号：{}，邮箱：{}，验证码：{}，有效期：{}分钟",
+                    dto.getUsername(), dto.getEmail(), code, RESET_CODE_VALID_MINUTES);
+            return;
+        }
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(mailFrom);
