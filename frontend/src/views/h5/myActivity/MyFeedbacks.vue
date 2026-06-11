@@ -152,11 +152,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { feedbackApi } from '@/api/feedback'
 import { registrationApi } from '@/api/registeration'
-import { activityApi } from '@/api/activity'
-import { getToken } from '@/utils/auth'
 import { MessagePlugin } from 'tdesign-vue-next'
 import H5NavBar from '../components/H5NavBar.vue'
 
@@ -172,11 +170,6 @@ const detailVisible = ref(false)
 const currentFeedback = ref(null)
 const submitFormRef = ref(null)
 const submitFileList = ref([])
-
-const uploadUrl = '/api/file/upload'
-const uploadHeaders = computed(() => ({
-  Authorization: `Bearer ${getToken()}`
-}))
 
 const submitForm = ref({
   activityId: '',
@@ -204,19 +197,14 @@ const fetchFeedbacks = async () => {
 
 const fetchActivityOptions = async () => {
   try {
-    const [activityRes, regRes] = await Promise.all([
-      activityApi.getActivityList({ page: 1, size: 100 }),
-      registrationApi.getMyRegistrations()
-    ])
-    const allActivities = activityRes.data?.records || []
+    const regRes = await registrationApi.getMyRegistrations({ page: 1, size: 1000 })
     const approvedRegs = (regRes.data?.records || []).filter(
       r => r.status === 1 || r.status === 2
     )
 
-    activityOptions.value = allActivities.map(a => ({ value: a.id, label: a.name }))
-    approvedActivities.value = allActivities
-      .filter(a => approvedRegs.some(r => r.activityId === a.id))
-      .map(a => ({ value: a.id, label: a.title }))
+    // 只显示已通过审核的报名对应的活动
+    activityOptions.value = approvedRegs.map(r => ({ value: r.activityId, label: r.activityTitle }))
+    approvedActivities.value = activityOptions.value
   } catch (err) {
     console.error('获取活动选项失败', err)
   }

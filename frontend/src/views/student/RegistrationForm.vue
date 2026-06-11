@@ -9,6 +9,20 @@
       </div>
 
       <div class="form-card">
+        <div class="basic-info">
+          <div class="basic-title">报名人基本信息</div>
+          <div class="basic-row"><span>姓名</span><strong>{{ userStore.realName || '-' }}</strong></div>
+          <div class="basic-row"><span>手机号</span><strong>{{ userStore.userInfo?.phone || '-' }}</strong></div>
+          <div class="basic-row"><span>邮箱</span><strong>{{ userStore.userInfo?.email || '-' }}</strong></div>
+        </div>
+
+        <t-alert
+          v-if="registrationStatus.message && !registrationStatus.canRegister"
+          theme="warning"
+          :message="registrationStatus.message"
+          style="margin-bottom: 16px"
+        />
+
         <t-form
           ref="formRef"
           :data="formData"
@@ -16,25 +30,17 @@
           label-width="100px"
           @submit="handleSubmit"
         >
+          <!-- Target school with autocomplete -->
           <t-form-item label="目标学校" name="targetSchool">
             <t-auto-complete
               v-model="formData.targetSchool"
               :options="schoolSuggestions"
               placeholder="请输入招生对象学校名称"
               clearable
-              @input="handleSchoolInput"
             />
           </t-form-item>
 
-          <t-form-item label="成绩/绩点" name="score">
-            <t-input
-              v-model="formData.score"
-              type="number"
-              placeholder="请输入成绩或绩点"
-              clearable
-            />
-          </t-form-item>
-
+          <!-- Dynamic custom fields -->
           <t-form-item
             v-for="(field, index) in customFields"
             :key="index"
@@ -81,21 +87,23 @@
             />
           </t-form-item>
 
-          <t-form-item label="附件上传" name="attachments">
-            <FileUploader
-              v-model="formData.attachments"
-              :multiple="true"
-              :limit="5"
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-              list-type="file"
-              tip-text="支持图片、PDF、Word、Excel格式，单个文件不超过10MB"
+          <!-- File upload -->
+          <t-form-item label="附件上传" name="files">
+            <t-upload
+              v-model="fileList"
+              :action="uploadUrl"
+              :headers="uploadHeaders"
+              :max="5"
+              :size-limit="{ size: 10, unit: 'MB' }"
+              theme="file-flow"
+              :abridge-name="[8, 6]"
             />
           </t-form-item>
 
           <t-form-item>
             <t-space size="large">
-              <t-button theme="primary" type="submit" size="large" :loading="submitting">
-                确认提交
+              <t-button theme="primary" type="submit" size="large" :loading="submitting" :disabled="!registrationStatus.canRegister">
+                {{ registrationStatus.registered ? '已报名' : '确认提交' }}
               </t-button>
               <t-button theme="default" variant="outline" size="large" @click="$router.back()">
                 返回
@@ -111,15 +119,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { activityApi } from '@/api/activity'
 import { registrationApi } from '@/api/registeration'
+import { getToken } from '@/utils/auth'
+import { useUserStore } from '@/store/modules/user'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
-import FileUploader from '@/components/business/FileUploader.vue'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const formRef = ref(null)
 const activity = ref(null)
@@ -127,12 +137,22 @@ const loading = ref(true)
 const submitting = ref(false)
 const customFields = ref([])
 const schoolSuggestions = ref([])
-const searchTimeout = ref(null)
+const schoolSearchTimer = ref(null)
+const schoolSearchSeq = ref(0)
+const fileList = ref([])
+const registrationStatus = reactive({
+  registered: false,
+  canRegister: true,
+  message: ''
+})
+
+const uploadUrl = '/api/file/upload'
+const uploadHeaders = computed(() => ({
+  Authorization: `Bearer ${getToken()}`
+}))
 
 const formData = reactive({
-  targetSchool: '',
-  score: null,
-  attachments: []
+  targetSchool: ''
 })
 
 const rules = {
@@ -142,10 +162,15 @@ const rules = {
 const fetchActivity = async () => {
   loading.value = true
   try {
-    const res = await activityApi.getActivityDetail(route.params.id)
+    const [res, statusRes] = await Promise.all([
+      activityApi.getActivityDetail(route.params.id),
+      registrationApi.getRegistrationStatus(route.params.id)
+    ])
     activity.value = res.data
+    Object.assign(registrationStatus, statusRes.data || {})
     customFields.value = res.data.customFields || []
 
+    // Init custom field data
     customFields.value.forEach((field, index) => {
       formData['custom_' + index] = ''
     })
@@ -156,93 +181,87 @@ const fetchActivity = async () => {
   }
 }
 
-const handleSchoolInput = async (value) => {
-  if (!value || value.length < 2) {
+const handleSchoolInput = (value) => {
+  const keyword = String(value || '').trim()
+  if (schoolSearchTimer.value) {
+    clearTimeout(schoolSearchTimer.value)
+  }
+  if (!keyword) {
     schoolSuggestions.value = []
     return
   }
-
-  if (searchTimeout.value) {
-    clearTimeout(searchTimeout.value)
-  }
-
-  searchTimeout.value = setTimeout(async () => {
+  schoolSearchTimer.value = setTimeout(async () => {
+    const currentSeq = ++schoolSearchSeq.value
     try {
-      const res = await fetch(`/api/school-dict/search?keyword=${encodeURIComponent(value)}`)
-      const data = await res.json()
-      if (data.code === 200 && data.data) {
-        schoolSuggestions.value = data.data.map(item => ({
-          label: item.name,
-          value: item.name
-        }))
-      }
+      const res = await registrationApi.getSchoolSuggestions({
+        activityId: route.params.id,
+        keyword
+      })
+      if (currentSeq !== schoolSearchSeq.value) return
+      schoolSuggestions.value = (res.data || []).map(item => ({ label: item, value: item }))
     } catch (err) {
-      console.error('搜索学校失败', err)
+      if (currentSeq === schoolSearchSeq.value) {
+        schoolSuggestions.value = []
+      }
     }
   }, 300)
 }
 
 const handleSubmit = async (e) => {
   if (e && e.preventDefault) e.preventDefault()
-
-  console.log('开始提交报名表单')
-  
-  const valid = await formRef.value.validate()
-  console.log('表单验证结果:', valid)
-  
-  if (valid !== true) {
-    console.log('表单验证失败')
+  if (!registrationStatus.canRegister) {
+    MessagePlugin.warning(registrationStatus.message || '当前无法报名')
     return
   }
 
+  const valid = await formRef.value.validate()
+  if (valid !== true) return
+
+  // Confirm dialog
   const dialog = DialogPlugin.confirm({
     header: '确认提交',
     body: '确定要提交此报名吗？提交后需等待审核。',
     confirmBtn: '确认提交',
-    cancelBtn: '取消',
     onConfirm: async () => {
-      console.log('用户点击确认提交')
       dialog.destroy()
       submitting.value = true
       try {
-        const customData = {}
-        customFields.value.forEach((field, index) => {
-          customData[field.name] = formData['custom_' + index]
-        })
-
         const payload = {
           activityId: route.params.id,
           targetSchool: formData.targetSchool,
-          score: formData.score,
-          formData: customData
+          customFields: customFields.value.map((field, index) => ({
+            name: field.name,
+            type: field.type,
+            value: formData['custom_' + index]
+          })),
+          fileIds: fileList.value.map(f => f.response?.data || f.url).filter(Boolean)
         }
-        console.log('提交的数据:', payload)
-        
-        const result = await registrationApi.submit(payload)
-        console.log('提交成功:', result)
-        
+        await registrationApi.submit(payload)
         MessagePlugin.success('报名提交成功')
-        
-        setTimeout(() => {
-          console.log('跳转到报名列表页')
-          router.push('/student/my-registrations')
-        }, 1500)
-        
+        router.push('/student/my-registrations')
       } catch (err) {
         console.error('提交报名失败', err)
-        MessagePlugin.error(err.response?.data?.message || err.message || '提交失败')
       } finally {
         submitting.value = false
       }
     },
     onCancel: () => {
-      console.log('用户点击取消')
       dialog.destroy()
     }
   })
 }
 
 onMounted(fetchActivity)
+
+watch(() => formData.targetSchool, (value) => {
+  handleSchoolInput(value)
+})
+
+onBeforeUnmount(() => {
+  if (schoolSearchTimer.value) {
+    clearTimeout(schoolSearchTimer.value)
+  }
+})
 </script>
 
 <style scoped>
@@ -274,6 +293,29 @@ onMounted(fetchActivity)
   border-radius: 12px;
   padding: 32px;
   border: 1px solid var(--td-border-level-1-color);
+}
+.basic-info {
+  background: var(--td-bg-color-container-hover);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.basic-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--td-text-color-primary);
+  margin-bottom: 8px;
+}
+.basic-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--td-text-color-secondary);
+  line-height: 26px;
+}
+.basic-row strong {
+  color: var(--td-text-color-primary);
+  font-weight: 500;
 }
 
 @media (max-width: 640px) {

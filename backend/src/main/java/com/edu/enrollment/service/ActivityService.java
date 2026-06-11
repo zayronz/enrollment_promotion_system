@@ -178,7 +178,6 @@ public class ActivityService {
         }
     }
 
-    @Transactional
     public void deleteActivity(Long id, Long userId) {
         ActivityEntity entity = activityMapper.selectById(id);
         if (entity == null) {

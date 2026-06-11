@@ -1,5 +1,7 @@
 package com.edu.enrollment.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.edu.enrollment.dto.AuditRequestDTO;
 import com.edu.enrollment.entity.ActivityEntity;
 import com.edu.enrollment.entity.AuditRecordEntity;
@@ -11,7 +13,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +54,10 @@ public class AuditService {
 
             // 通过：判断是否还有下一级审批
             if (hasNextNode(registration.getCurrentNode(), activity)) {
+                // 学院审核通过，设置状态为1（学院通过）
+                if ("college_audit".equals(registration.getCurrentNode())) {
+                    registration.setStatus(1); // 学院通过
+                }
                 registration.setCurrentNode(getNextNode(registration.getCurrentNode()));
             } else {
                 registration.setStatus(2); // 全部通过
@@ -114,97 +123,103 @@ public class AuditService {
     }
 
     /**
-     * 获取审核历史列表
+     * 获取审核历史记录
      */
-    public java.util.Map<String, Object> getAuditHistory(Long auditorId, Integer page, Integer size,
-                                                          String keyword, Long activityId, String result) {
-        UserEntity auditor = userService.getById(auditorId);
+    public Map<String, Object> getAuditHistory(Long auditorId, Integer page, Integer size,
+                                                String keyword, Long activityId, String result) {
+        // 构建查询条件
+        LambdaQueryWrapper<AuditRecordEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AuditRecordEntity::getAuditorId, auditorId);
 
-        // 查询已审核的记录（status = 2 通过 或 status = 3 拒绝）
-        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<RegistrationEntity> wrapper =
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
-        wrapper.in(RegistrationEntity::getStatus, 2, 3);
-
-        // 学院审核员只能看到本学院用户的报名
-        if ("COLLEGE".equals(auditor.getRole())) {
-            List<UserEntity> collegeUsers = userService.getByCollegeId(auditor.getCollegeId());
-            if (collegeUsers.isEmpty()) {
-                java.util.Map<String, Object> emptyResult = new java.util.HashMap<>();
-                emptyResult.put("records", List.of());
-                emptyResult.put("total", 0L);
-                emptyResult.put("current", page);
-                emptyResult.put("size", size);
-                return emptyResult;
+        // 审核结果筛选
+        if (result != null && !result.isEmpty()) {
+            if ("APPROVED".equals(result)) {
+                wrapper.eq(AuditRecordEntity::getResult, 1);
+            } else if ("REJECTED".equals(result)) {
+                wrapper.eq(AuditRecordEntity::getResult, 2);
             }
-            List<Long> collegeUserIds = collegeUsers.stream()
-                    .map(UserEntity::getId)
-                    .collect(java.util.stream.Collectors.toList());
-            wrapper.in(RegistrationEntity::getUserId, collegeUserIds);
         }
 
-        // 活动筛选
-        if (activityId != null) {
-            wrapper.eq(RegistrationEntity::getActivityId, activityId);
-        }
-
-        wrapper.orderByDesc(RegistrationEntity::getUpdateTime);
+        wrapper.orderByDesc(AuditRecordEntity::getCreateTime);
 
         // 分页查询
-        com.baomidou.mybatisplus.extension.plugins.pagination.Page<RegistrationEntity> registrationPage =
-                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
-        registrationPage = registrationMapper.selectPage(registrationPage, wrapper);
+        Page<AuditRecordEntity> auditPage = new Page<>(page, size);
+        auditPage = auditRecordMapper.selectPage(auditPage, wrapper);
 
-        // 组装返回结果
-        List<java.util.Map<String, Object>> enrichedRecords = registrationPage.getRecords().stream()
-                .map(reg -> {
-                    java.util.Map<String, Object> map = new java.util.HashMap<>();
-                    UserEntity user = userService.getById(reg.getUserId());
-                    ActivityEntity activity = activityService.getById(reg.getActivityId());
+        // 组装返回结果，附加报名和活动信息
+        List<Map<String, Object>> enrichedRecords = auditPage.getRecords().stream()
+                .map(audit -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", audit.getId());
+                    map.put("registrationId", audit.getRegistrationId());
+                    map.put("node", audit.getNode());
+                    map.put("auditorId", audit.getAuditorId());
+                    map.put("auditorName", audit.getAuditorName());
+                    // 转换审核结果为字符串
+                    map.put("result", audit.getResult() == 1 ? "APPROVED" : "REJECTED");
+                    map.put("comment", audit.getComment());
+                    map.put("createTime", audit.getCreateTime());
 
-                    // 获取审核记录
-                    List<AuditRecordEntity> auditRecords = auditRecordMapper.selectByRegistrationId(reg.getId());
-                    AuditRecordEntity latestAudit = auditRecords.isEmpty() ? null : auditRecords.get(0);
+                    // 获取报名信息
+                    RegistrationEntity registration = registrationMapper.selectById(audit.getRegistrationId());
+                    if (registration != null) {
+                        map.put("targetSchool", registration.getTargetSchool());
+                        map.put("score", registration.getScore());
 
-                    map.put("id", reg.getId());
-                    map.put("activityId", reg.getActivityId());
-                    map.put("activityTitle", activity != null ? activity.getName() : "-");
-                    map.put("realName", user != null ? user.getRealName() : "-");
-                    map.put("userType", user != null ? ("student".equals(user.getRole()) ? "STUDENT" : "TEACHER") : "-");
-                    map.put("targetSchool", reg.getTargetSchool());
-                    map.put("score", reg.getScore());
-                    map.put("createTime", reg.getCreateTime());
-                    map.put("result", reg.getStatus() == 2 ? "APPROVED" : "REJECTED");
-                    map.put("comment", latestAudit != null ? latestAudit.getComment() : "-");
-                    map.put("auditorName", latestAudit != null ? latestAudit.getAuditorName() : "-");
+                        // 获取活动信息
+                        ActivityEntity activity = activityService.getById(registration.getActivityId());
+                        if (activity != null) {
+                            map.put("activityId", activity.getId());
+                            map.put("activityName", activity.getName());
+                            map.put("activityTitle", activity.getName()); // 前端期望的字段名
+                        }
+
+                        // 获取用户信息
+                        UserEntity user = userService.getById(registration.getUserId());
+                        if (user != null) {
+                            map.put("userId", user.getId());
+                            map.put("userName", user.getRealName());
+                            map.put("realName", user.getRealName()); // 前端期望的字段名
+                            map.put("userType", "student".equals(user.getRole()) ? "STUDENT" : "TEACHER");
+                        }
+                    }
+
                     return map;
                 })
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
 
         // 关键词过滤
-        List<java.util.Map<String, Object>> filtered = enrichedRecords;
+        List<Map<String, Object>> filtered = enrichedRecords;
         if (keyword != null && !keyword.isEmpty()) {
             String kw = keyword.toLowerCase();
             filtered = enrichedRecords.stream()
                     .filter(m -> {
-                        String name = (String) m.getOrDefault("realName", "");
+                        String activityName = (String) m.getOrDefault("activityName", "");
+                        String activityTitle = (String) m.getOrDefault("activityTitle", "");
+                        String userName = (String) m.getOrDefault("userName", "");
+                        String realName = (String) m.getOrDefault("realName", "");
                         String school = (String) m.getOrDefault("targetSchool", "");
-                        return name.toLowerCase().contains(kw) || school.toLowerCase().contains(kw);
+                        return activityName.toLowerCase().contains(kw)
+                                || activityTitle.toLowerCase().contains(kw)
+                                || userName.toLowerCase().contains(kw)
+                                || realName.toLowerCase().contains(kw)
+                                || school.toLowerCase().contains(kw);
                     })
-                    .collect(java.util.stream.Collectors.toList());
+                    .collect(Collectors.toList());
         }
 
-        // 结果筛选
-        if (result != null && !result.isEmpty()) {
+        // 活动筛选
+        if (activityId != null) {
             filtered = filtered.stream()
-                    .filter(m -> result.equals(m.get("result")))
-                    .collect(java.util.stream.Collectors.toList());
+                    .filter(m -> activityId.equals(m.get("activityId")))
+                    .collect(Collectors.toList());
         }
 
-        java.util.Map<String, Object> resultMap = new java.util.HashMap<>();
-        resultMap.put("records", filtered);
-        resultMap.put("total", (long) filtered.size());
-        resultMap.put("current", page);
-        resultMap.put("size", size);
-        return resultMap;
+        Map<String, Object> pageResult = new HashMap<>();
+        pageResult.put("records", filtered);
+        pageResult.put("total", (long) filtered.size());
+        pageResult.put("current", page);
+        pageResult.put("size", size);
+        return pageResult;
     }
 }

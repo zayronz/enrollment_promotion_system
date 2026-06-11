@@ -193,24 +193,56 @@ const loadActivity = async () => {
   try {
     const res = await activityApi.getActivityDetail(id)
     const data = res.data
-    form.name = data.title || data.name
-    form.type = data.type === 'ONLINE' ? 0 : 1
+    form.name = data.title || data.name || ''
+    // type: 后端返回数字 0/1，直接使用
+    form.type = data.type !== undefined && data.type !== null ? data.type : 0
     form.location = data.location || ''
-    form.activityTime = [data.startTime || data.activityStartTime, data.endTime || data.activityEndTime]
-    form.registrationTime = [data.registerStartTime || data.registrationStartTime, data.registerEndTime || data.registrationEndTime]
+    
+    // 活动时间
+    const activityStartTime = data.startTime || data.activityStartTime
+    const activityEndTime = data.endTime || data.activityEndTime
+    form.activityTime = activityStartTime && activityEndTime ? [activityStartTime, activityEndTime] : []
+    
+    // 报名时间
+    const regStartTime = data.registerStartTime || data.registrationStartTime
+    const regEndTime = data.registerEndTime || data.registrationEndTime
+    form.registrationTime = regStartTime && regEndTime ? [regStartTime, regEndTime] : []
+    
     form.description = data.description || data.content || ''
     form.coverImage = data.coverImage || ''
-    form.bannerImages = data.bannerUrl || data.bannerImages || ''
+    
+    // 轮播图：支持单个和多个
+    if (data.bannerUrls && Array.isArray(data.bannerUrls)) {
+      form.bannerImages = data.bannerUrls
+    } else if (data.bannerUrl) {
+      form.bannerImages = [data.bannerUrl]
+    } else {
+      form.bannerImages = []
+    }
+    
     form.videoUrl = data.videoUrl || ''
+    
     form.customFields = (data.customFields || []).map(f => ({
       ...f,
       optionsStr: Array.isArray(f.options) ? f.options.join(',') : (f.options || '')
     }))
-    form.maxStudentPerSchool = data.maxStudentPerSchool || 10
-    form.maxTeacherPerSchool = data.maxTeacherPerSchool || 5
+    
+    form.maxStudentPerSchool = data.maxStudentPerSchool !== undefined && data.maxStudentPerSchool !== null ? data.maxStudentPerSchool : 10
+    form.maxTeacherPerSchool = data.maxTeacherPerSchool !== undefined && data.maxTeacherPerSchool !== null ? data.maxTeacherPerSchool : 5
     form.autoGroup = data.autoGroup !== false
-    form.auditFlow = data.auditFlow || ['college_audit', 'school_audit']
-    form.status = data.status || 'DRAFT'
+    
+    if (data.auditFlow && Array.isArray(data.auditFlow)) {
+      form.auditFlow = data.auditFlow
+    } else {
+      form.auditFlow = ['college_audit', 'school_audit']
+    }
+    
+    // status: 后端返回数字 0/1/2，需要转换为字符串 'DRAFT'/'PUBLISHED'/'ENDED'
+    const statusMap = { 0: 'DRAFT', 1: 'PUBLISHED', 2: 'ENDED' }
+    form.status = statusMap[data.status] || 'DRAFT'
+    
+    console.log('加载的活动数据:', data)
+    console.log('表单数据:', form)
   } catch (err) {
     console.error('获取活动详情失败', err)
   } finally {
@@ -249,7 +281,8 @@ const buildSubmitData = () => {
     registrationEndTime: formatDateTime(form.registrationTime[1]),
     description: form.description,
     coverImage: form.coverImage,
-    bannerUrl: form.bannerImages || null,
+    bannerUrl: Array.isArray(form.bannerImages) && form.bannerImages.length > 0 ? form.bannerImages[0] : (form.bannerImages || null),
+    bannerUrls: Array.isArray(form.bannerImages) && form.bannerImages.length > 1 ? form.bannerImages : null,
     videoUrl: form.videoUrl,
     customFields: form.customFields.map(f => ({
       ...f,

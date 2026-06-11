@@ -143,7 +143,7 @@ const columns = [
 const fetchData = async () => {
   loading.value = true
   try {
-    const res = await auditApi.getHistory({
+    const res = await auditApi.getAuditHistory({
       page: pagination.value.current,
       size: pagination.value.pageSize,
       keyword: keyword.value || undefined,

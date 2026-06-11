@@ -34,7 +34,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watchEffect } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { getToken } from '@/utils/auth'
 import { getFileUrl } from '@/utils/file'
@@ -114,15 +114,29 @@ const buildItemsFromModel = (value) => {
   return []
 }
 
-// 只在初始化时同步一次，避免覆盖用户操作
-let isInitialized = false
-watch(() => props.modelValue, (newVal) => {
-  if (!isInitialized) {
-    console.log('初始化 modelValue，同步 fileList')
-    fileList.value = buildItemsFromModel(newVal)
-    isInitialized = true
+// 监听 modelValue 变化，同步 fileList
+watchEffect(() => {
+  const newVal = props.modelValue
+  console.log('FileUploader modelValue 变化:', newVal)
+  
+  // 比较新旧值是否相同，避免不必要的更新
+  const oldItems = fileList.value
+  const newItems = buildItemsFromModel(newVal)
+  
+  console.log('旧 fileList:', oldItems)
+  console.log('新 items:', newItems)
+  
+  // 检查是否需要更新
+  const oldUrls = oldItems.map(item => item.relativeUrl).sort()
+  const newUrls = newItems.map(item => item.relativeUrl).sort()
+  const isSame = oldUrls.length === newUrls.length && 
+                  oldUrls.every((url, idx) => url === newUrls[idx])
+  
+  if (!isSame) {
+    console.log('更新 fileList')
+    fileList.value = newItems
   }
-}, { immediate: true, deep: true })
+})
 
 // 获取当前文件列表中的相对URL列表
 const getCurrentRelativeUrls = () => {

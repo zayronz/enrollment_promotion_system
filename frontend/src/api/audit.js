@@ -12,7 +12,7 @@ export const auditApi = {
     },
 
     // 获取审核历史
-    getHistory(params = {}) {
+    getAuditHistory(params) {
         return request.get('/audit/history', { params })
     }
 }
