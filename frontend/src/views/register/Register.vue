@@ -6,7 +6,7 @@
           <UserAddIcon class="header-icon" />
         </div>
         <h2 class="header-title">创建账号</h2>
-        <p class="header-desc">加入武汉理工大学招生宣传报名系统</p>
+        <p class="header-desc">加入招生宣传报名系统</p>
       </div>
 
       <t-form :data="form" :rules="rules" ref="formRef" label-width="0" @submit="handleRegister">
@@ -37,25 +37,27 @@
               <template #prefix-icon><t-icon name="user" /></template>
             </t-input>
           </t-form-item>
-          <t-form-item name="collegeId">
-            <t-select v-model="form.collegeId" placeholder="请选择学院" size="large" clearable>
-              <t-option
-                v-for="college in colleges"
-                :key="college.id"
-                :label="college.name"
-                :value="college.id"
-              />
-            </t-select>
+          <t-form-item name="collegeName">
+            <t-auto-complete
+              v-model="form.collegeName"
+              :options="collegeOptions"
+              placeholder="请输入或选择学院"
+              size="large"
+              clearable
+              :loading="collegeLoading"
+            />
           </t-form-item>
           <t-row :gutter="16">
             <t-col :span="6">
               <t-form-item name="grade">
-                <t-input-number v-model="form.grade" :min="1" :max="5" placeholder="年级" theme="normal" size="large" style="width: 100%" />
+                <t-select v-model="form.grade" placeholder="请选择年级" size="large" clearable>
+                  <t-option v-for="grade in gradeOptions" :key="grade.value" :label="grade.label" :value="grade.value" />
+                </t-select>
               </t-form-item>
             </t-col>
             <t-col :span="6">
               <t-form-item name="gpa">
-                <t-input-number v-model="form.gpa" :min="0" :max="5" :decimal-places="2" step="0.1" placeholder="绩点" theme="normal" size="large" style="width: 100%" />
+                <t-input v-model="form.gpa" type="number" placeholder="请输入绩点" size="large" clearable />
               </t-form-item>
             </t-col>
           </t-row>
@@ -68,15 +70,15 @@
               <template #prefix-icon><t-icon name="user" /></template>
             </t-input>
           </t-form-item>
-          <t-form-item name="collegeId">
-            <t-select v-model="form.collegeId" placeholder="请选择所属学院" size="large" clearable>
-              <t-option
-                v-for="college in colleges"
-                :key="college.id"
-                :label="college.name"
-                :value="college.id"
-              />
-            </t-select>
+          <t-form-item name="collegeName">
+            <t-auto-complete
+              v-model="form.collegeName"
+              :options="collegeOptions"
+              placeholder="请输入或选择所属学院"
+              size="large"
+              clearable
+              :loading="collegeLoading"
+            />
           </t-form-item>
         </template>
 
@@ -138,7 +140,21 @@ const router = useRouter()
 const route = useRoute()
 const formRef = ref(null)
 const loading = ref(false)
+const collegeLoading = ref(false)
 const colleges = ref([])
+const collegeOptions = computed(() =>
+  colleges.value.map(college => ({
+    label: college.name,
+    value: college.name
+  }))
+)
+const gradeOptions = [
+  { label: '大一', value: 1 },
+  { label: '大二', value: 2 },
+  { label: '大三', value: 3 },
+  { label: '大四', value: 4 },
+  { label: '大五', value: 5 }
+]
 
 const form = reactive({
   role: 'STUDENT',
@@ -149,6 +165,7 @@ const form = reactive({
   email: '',
   phone: '',
   collegeId: null,
+  collegeName: '',
   grade: null,
   gpa: null
 })
@@ -181,6 +198,19 @@ const validateConfirmPassword = (val) => {
   return { result: true }
 }
 
+// 校验绩点
+const validateGpa = (val) => {
+  if (form.role !== 'STUDENT') return { result: true }
+  if (val === '' || val === null || val === undefined) {
+    return { result: false, message: '请输入绩点', type: 'error' }
+  }
+  const num = Number(val)
+  if (Number.isNaN(num) || num < 0 || num > 5) {
+    return { result: false, message: '绩点范围应为 0-5', type: 'error' }
+  }
+  return { result: true }
+}
+
 // 动态校验规则：教师不需要 grade/gpa
 const rules = computed(() => {
   const baseCommon = {
@@ -209,14 +239,14 @@ const rules = computed(() => {
       { validator: validateEmail }
     ],
     phone: [{ validator: validatePhone }],
-    collegeId: [{ required: true, message: '请选择学院', type: 'error' }]
+    collegeName: [{ required: true, message: '请输入或选择学院', type: 'error' }]
   }
 
   if (form.role === 'STUDENT') {
     return {
       ...baseCommon,
       grade: [{ required: true, message: '请输入年级', type: 'error' }],
-      gpa: [{ required: true, message: '请输入绩点', type: 'error' }]
+      gpa: [{ validator: validateGpa }]
     }
   }
   return baseCommon
@@ -224,6 +254,7 @@ const rules = computed(() => {
 
 // 获取学院列表
 const fetchColleges = async () => {
+  collegeLoading.value = true
   try {
     const res = await request.get('/college/list')
     if (res.code === 200) {
@@ -231,6 +262,9 @@ const fetchColleges = async () => {
     }
   } catch (error) {
     console.error('获取学院列表失败', error)
+    MessagePlugin.warning('学院列表加载失败，请刷新页面重试')
+  } finally {
+    collegeLoading.value = false
   }
 }
 
@@ -243,6 +277,11 @@ watch(() => form.role, () => {
   form.gpa = null
 })
 
+watch(() => form.collegeName, (name) => {
+  const matchedCollege = colleges.value.find(college => college.name === String(name || '').trim())
+  form.collegeId = matchedCollege ? matchedCollege.id : null
+})
+
 // 注册
 const handleRegister = async ({ validateResult, firstError }) => {
   if (validateResult !== true) {
@@ -252,6 +291,7 @@ const handleRegister = async ({ validateResult, firstError }) => {
 
   loading.value = true
   try {
+    const collegeId = await resolveCollegeId()
     const submitData = {
       username: form.username,
       password: form.password,
@@ -259,12 +299,13 @@ const handleRegister = async ({ validateResult, firstError }) => {
       email: form.email,
       phone: form.phone,
       role: form.role,
-      collegeId: form.collegeId
+      collegeId,
+      collegeName: form.collegeName.trim()
     }
     // 学生额外提交 grade 和 gpa
     if (form.role === 'STUDENT') {
-      submitData.grade = form.grade
-      submitData.gpa = form.gpa
+      submitData.grade = Number(form.grade)
+      submitData.gpa = Number(form.gpa)
     }
 
     const res = await userApi.register(submitData)
@@ -280,6 +321,30 @@ const handleRegister = async ({ validateResult, firstError }) => {
   } finally {
     loading.value = false
   }
+}
+
+const resolveCollegeId = async () => {
+  const collegeName = form.collegeName.trim()
+  if (!collegeName) {
+    throw new Error('学院不能为空')
+  }
+
+  const matchedCollege = colleges.value.find(college => college.name === collegeName)
+  if (matchedCollege) {
+    form.collegeId = matchedCollege.id
+    return Number(matchedCollege.id)
+  }
+
+  const res = await request.post('/college/resolve', { name: collegeName })
+  const college = res.data
+  if (!college?.id) {
+    throw new Error('学院信息解析失败')
+  }
+  form.collegeId = college.id
+  if (!colleges.value.some(item => item.id === college.id)) {
+    colleges.value.push(college)
+  }
+  return Number(college.id)
 }
 
 const goToLogin = () => {

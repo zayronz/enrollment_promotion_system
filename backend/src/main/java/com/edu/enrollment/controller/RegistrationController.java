@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -23,6 +24,18 @@ public class RegistrationController {
                                  @CurrentUserId Long userId) {
         Long id = registrationService.submit(dto, userId);
         return ResultVO.success(id);
+    }
+
+    @GetMapping("/status")
+    public ResultVO<?> status(@RequestParam Long activityId,
+                              @CurrentUserId Long userId) {
+        return ResultVO.success(registrationService.getRegistrationStatus(activityId, userId));
+    }
+
+    @GetMapping("/school-suggestions")
+    public ResultVO<List<String>> schoolSuggestions(@RequestParam(required = false) Long activityId,
+                                                    @RequestParam String keyword) {
+        return ResultVO.success(registrationService.suggestSchools(activityId, keyword));
     }
 
     @GetMapping("/my")

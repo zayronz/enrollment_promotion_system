@@ -9,7 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 学校名称标准化工具
@@ -65,6 +67,39 @@ public class SchoolNameNormalizer {
 
         // 4. 默认返回原值（去除后缀后标准化）
         return normalizeBySuffix(trimmed);
+    }
+
+    /**
+     * 根据输入内容返回学校名称联想项
+     */
+    public List<String> suggest(String keyword, int limit) {
+        if (StrUtil.isBlank(keyword)) {
+            return List.of();
+        }
+
+        String trimmed = keyword.trim();
+        Set<String> suggestions = new LinkedHashSet<>();
+        List<SchoolDictEntity> dicts = schoolDictMapper.selectList(null);
+
+        for (SchoolDictEntity dict : dicts) {
+            if (suggestions.size() >= limit) {
+                break;
+            }
+            String standardName = dict.getStandardName();
+            if (StrUtil.isNotBlank(standardName) && standardName.contains(trimmed)) {
+                suggestions.add(standardName);
+                continue;
+            }
+            if (StrUtil.isNotBlank(dict.getAliasNames())) {
+                List<String> aliases = JSONUtil.toList(JSONUtil.parseArray(dict.getAliasNames()), String.class);
+                boolean aliasMatched = aliases.stream().anyMatch(alias -> alias != null && alias.contains(trimmed));
+                if (aliasMatched && StrUtil.isNotBlank(standardName)) {
+                    suggestions.add(standardName);
+                }
+            }
+        }
+
+        return new ArrayList<>(suggestions);
     }
 
     private String fuzzyMatch(String input, List<SchoolDictEntity> dicts) {

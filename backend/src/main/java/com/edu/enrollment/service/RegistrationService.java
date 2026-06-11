@@ -5,9 +5,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.edu.enrollment.dto.RegistrationSubmitDTO;
 import com.edu.enrollment.entity.ActivityEntity;
+import com.edu.enrollment.entity.AuditRecordEntity;
+import com.edu.enrollment.entity.FeedbackEntity;
 import com.edu.enrollment.entity.RegistrationEntity;
 import com.edu.enrollment.entity.UserEntity;
 import com.edu.enrollment.exception.BusinessException;
+import com.edu.enrollment.mapper.AuditRecordMapper;
+import com.edu.enrollment.mapper.FeedbackMapper;
 import com.edu.enrollment.mapper.RegistrationMapper;
 import com.edu.enrollment.utils.SchoolNameNormalizer;
 import lombok.RequiredArgsConstructor;
@@ -15,10 +19,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -30,6 +37,8 @@ public class RegistrationService {
     private final ActivityService activityService;
     private final UserService userService;
     private final SchoolNameNormalizer schoolNameNormalizer;
+    private final AuditRecordMapper auditRecordMapper;
+    private final FeedbackMapper feedbackMapper;
 
     /** 报名提交锁，防止同一用户并发提交 */
     private final ConcurrentHashMap<Long, Object> submitLocks = new ConcurrentHashMap<>();
@@ -62,33 +71,26 @@ public class RegistrationService {
             throw new BusinessException("不在报名时间内");
         }
 
-        // 2. 检查是否已报名（只查询最新的报名记录）
-        RegistrationEntity existReg = registrationMapper.findByActivityAndUser(dto.getActivityId(), userId);
+        // 2. 检查是否已报名
+        RegistrationEntity existReg = findActiveRegistration(dto.getActivityId(), userId);
         if (existReg != null) {
-            // 状态说明：0=待审核, 1=学院通过, 2=全部通过, 3=已拒绝, 4=已撤回
-            // 只有被拒绝(3)或已撤回(4)的情况下才允许重新报名
-            if (existReg.getStatus() != 3 && existReg.getStatus() != 4) {
-                String statusMsg = existReg.getStatus() == 0 ? "审核中" : 
-                                   existReg.getStatus() == 1 ? "学院审核通过" : 
-                                   existReg.getStatus() == 2 ? "报名成功" : "已报名";
-                throw new BusinessException("您已报名过此活动，当前状态：" + statusMsg);
-            }
+            throw new BusinessException("您已报名过此活动");
         }
 
         // 3. 获取用户信息
         UserEntity user = userService.getById(userId);
 
         // 4. 标准化学校名称
-        String normalizedSchool = schoolNameNormalizer.normalize(dto.getTargetSchool());
+        String normalizedSchool = normalizeTargetSchool(dto.getActivityId(), dto.getTargetSchool());
 
         // 5. 创建报名记录
         RegistrationEntity registration = new RegistrationEntity();
         registration.setActivityId(dto.getActivityId());
         registration.setUserId(userId);
-        registration.setUserType("student".equals(user.getRole()) ? 0 : 1);
+        registration.setUserType("STUDENT".equalsIgnoreCase(user.getRole()) ? 0 : 1);
         registration.setTargetSchool(normalizedSchool);
         registration.setScore(dto.getScore());
-        registration.setFormData(JSONUtil.toJsonStr(dto.getFormData()));
+        registration.setFormData(JSONUtil.toJsonStr(buildRegistrationFormData(dto, user, normalizedSchool)));
         registration.setStatus(0); // 待审核
         registration.setCurrentNode("college_audit");
 
@@ -100,6 +102,127 @@ public class RegistrationService {
         }
 
         return registration.getId();
+    }
+
+    private Map<String, Object> buildRegistrationFormData(RegistrationSubmitDTO dto, UserEntity user, String normalizedSchool) {
+        Map<String, Object> data = new HashMap<>();
+        if (dto.getFormData() != null) {
+            data.putAll(dto.getFormData());
+        }
+        data.put("targetSchool", normalizedSchool);
+        data.put("basicInfo", Map.of(
+                "userId", user.getId(),
+                "realName", user.getRealName() != null ? user.getRealName() : "",
+                "username", user.getUsername() != null ? user.getUsername() : "",
+                "role", user.getRole() != null ? user.getRole() : "",
+                "phone", user.getPhone() != null ? user.getPhone() : "",
+                "email", user.getEmail() != null ? user.getEmail() : ""
+        ));
+        if (dto.getCustomFields() != null) {
+            data.put("customFields", dto.getCustomFields());
+        }
+        if (dto.getFileIds() != null) {
+            data.put("attachments", dto.getFileIds());
+        }
+        return data;
+    }
+
+    private RegistrationEntity findActiveRegistration(Long activityId, Long userId) {
+        List<RegistrationEntity> registrations = registrationMapper.selectList(
+                new LambdaQueryWrapper<RegistrationEntity>()
+                        .eq(RegistrationEntity::getActivityId, activityId)
+                        .eq(RegistrationEntity::getUserId, userId)
+                        .ne(RegistrationEntity::getStatus, 4)
+                        .orderByDesc(RegistrationEntity::getCreateTime)
+        );
+        return registrations.isEmpty() ? null : registrations.get(0);
+    }
+
+    private String normalizeTargetSchool(Long activityId, String inputSchool) {
+        String normalized = schoolNameNormalizer.normalize(inputSchool);
+        if (normalized == null || normalized.isBlank()) {
+            return normalized;
+        }
+
+        List<RegistrationEntity> existingRegistrations = registrationMapper.selectList(
+                new LambdaQueryWrapper<RegistrationEntity>()
+                        .eq(RegistrationEntity::getActivityId, activityId)
+                        .isNotNull(RegistrationEntity::getTargetSchool)
+        );
+
+        String trimmed = inputSchool == null ? "" : inputSchool.trim();
+        for (RegistrationEntity registration : existingRegistrations) {
+            String existingSchool = registration.getTargetSchool();
+            if (existingSchool == null || existingSchool.isBlank()) {
+                continue;
+            }
+            if (existingSchool.contains(trimmed) || trimmed.contains(existingSchool)) {
+                return existingSchool.length() >= normalized.length() ? existingSchool : normalized;
+            }
+        }
+
+        return normalized;
+    }
+
+    public Map<String, Object> getRegistrationStatus(Long activityId, Long userId) {
+        ActivityEntity activity = activityService.getById(activityId);
+        if (activity == null) {
+            throw new BusinessException("活动不存在");
+        }
+
+        RegistrationEntity registration = findActiveRegistration(activityId, userId);
+        boolean registered = registration != null;
+        LocalDateTime now = LocalDateTime.now();
+        boolean inTime = activity.getRegistrationStartTime() != null
+                && activity.getRegistrationEndTime() != null
+                && !now.isBefore(activity.getRegistrationStartTime())
+                && !now.isAfter(activity.getRegistrationEndTime());
+        boolean published = activity.getStatus() == 1;
+        boolean canRegister = published && inTime && !registered;
+
+        String message = "可以报名";
+        if (registered) {
+            message = "您已报名过该活动";
+        } else if (!published) {
+            message = "活动未发布";
+        } else if (!inTime) {
+            message = "当前不在报名时间内";
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("registered", registered);
+        result.put("canRegister", canRegister);
+        result.put("registrationId", registered ? registration.getId() : null);
+        result.put("status", registered ? registration.getStatus() : null);
+        result.put("message", message);
+        return result;
+    }
+
+    public List<String> suggestSchools(Long activityId, String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> suggestions = new LinkedHashSet<>();
+        List<RegistrationEntity> registrations = registrationMapper.selectList(
+                new LambdaQueryWrapper<RegistrationEntity>()
+                        .eq(activityId != null, RegistrationEntity::getActivityId, activityId)
+                        .like(RegistrationEntity::getTargetSchool, keyword.trim())
+                        .orderByDesc(RegistrationEntity::getCreateTime)
+        );
+
+        registrations.stream()
+                .map(RegistrationEntity::getTargetSchool)
+                .filter(name -> name != null && !name.isBlank())
+                .limit(8)
+                .forEach(suggestions::add);
+
+        if (suggestions.size() < 8) {
+            List<String> dictSuggestions = schoolNameNormalizer.suggest(keyword, 8 - suggestions.size());
+            suggestions.addAll(dictSuggestions);
+        }
+
+        return new ArrayList<>(suggestions).stream().limit(8).collect(Collectors.toList());
     }
 
     /**
@@ -156,8 +279,145 @@ public class RegistrationService {
         return result;
     }
 
-    public RegistrationEntity getDetail(Long id) {
-        return registrationMapper.selectById(id);
+    public Map<String, Object> getDetail(Long id) {
+        RegistrationEntity registration = registrationMapper.selectById(id);
+        if (registration == null) {
+            throw new BusinessException("报名记录不存在");
+        }
+
+        Map<String, Object> detail = new HashMap<>();
+        ActivityEntity activity = activityService.getById(registration.getActivityId());
+        detail.put("id", registration.getId());
+        detail.put("activityId", registration.getActivityId());
+        detail.put("activityTitle", activity != null ? activity.getName() : "-");
+        detail.put("userId", registration.getUserId());
+        detail.put("targetSchool", registration.getTargetSchool());
+        detail.put("score", registration.getScore());
+        detail.put("status", registration.getStatus());
+        detail.put("currentNode", registration.getCurrentNode());
+        detail.put("rejectReason", registration.getRejectReason());
+        detail.put("groupName", registration.getGroupName());
+        detail.put("groupRank", registration.getGroupRank());
+        detail.put("createTime", registration.getCreateTime());
+        detail.put("activityDetail", activity != null ? activityService.getDetail(activity.getId()) : null);
+        detail.put("auditProgress", getAuditProgress(registration));
+        detail.put("auditLogs", buildAuditLogs(registration.getId()));
+        detail.put("teamMembers", buildTeamMembers(registration));
+        detail.put("feedbacks", registration.getStatus() == 2 ? buildFeedbacks(registration.getActivityId()) : List.of());
+
+        Map<String, Object> formData = new HashMap<>();
+        if (registration.getFormData() != null && !registration.getFormData().isBlank()) {
+            formData.putAll(JSONUtil.parseObj(registration.getFormData()));
+        }
+        detail.put("formData", formData);
+        detail.put("basicInfo", formData.getOrDefault("basicInfo", Map.of()));
+        detail.put("customFields", formData.getOrDefault("customFields", List.of()));
+        detail.put("attachments", formData.getOrDefault("attachments", List.of()));
+        return detail;
+    }
+
+    private String getAuditProgress(RegistrationEntity registration) {
+        if (registration.getStatus() == 0) {
+            return "待审核：" + getAuditNodeName(registration.getCurrentNode());
+        }
+        if (registration.getStatus() == 1) {
+            return "学院审核通过，等待学校审核";
+        }
+        if (registration.getStatus() == 2) {
+            return "审核已全部通过";
+        }
+        if (registration.getStatus() == 3) {
+            return "审核已拒绝：" + (registration.getRejectReason() != null ? registration.getRejectReason() : "-");
+        }
+        if (registration.getStatus() == 4) {
+            return "报名已撤回";
+        }
+        return "未知进度";
+    }
+
+    private List<Map<String, Object>> buildAuditLogs(Long registrationId) {
+        return auditRecordMapper.selectByRegistrationId(registrationId).stream()
+                .map(record -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", record.getId());
+                    map.put("node", record.getNode());
+                    map.put("nodeName", getAuditNodeName(record.getNode()));
+                    map.put("auditorId", record.getAuditorId());
+                    map.put("auditorName", record.getAuditorName());
+                    map.put("result", record.getResult() == 1 ? "APPROVED" : "REJECTED");
+                    map.put("resultText", record.getResult() == 1 ? "通过" : "拒绝");
+                    map.put("comment", record.getComment());
+                    map.put("attachmentUrls", record.getAttachmentUrls());
+                    map.put("createTime", record.getCreateTime());
+                    return map;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private String getAuditNodeName(String node) {
+        if ("college_audit".equals(node)) {
+            return "学院审核";
+        }
+        if ("school_audit".equals(node)) {
+            return "学校审核";
+        }
+        if ("completed".equals(node)) {
+            return "审核完成";
+        }
+        return node != null ? node : "-";
+    }
+
+    private List<Map<String, Object>> buildTeamMembers(RegistrationEntity registration) {
+        if (registration.getGroupName() == null || registration.getGroupName().isBlank()) {
+            return List.of();
+        }
+
+        List<RegistrationEntity> memberRegistrations = registrationMapper.selectList(
+                new LambdaQueryWrapper<RegistrationEntity>()
+                        .eq(RegistrationEntity::getActivityId, registration.getActivityId())
+                        .eq(RegistrationEntity::getGroupName, registration.getGroupName())
+                        .ne(RegistrationEntity::getStatus, 4)
+                        .orderByAsc(RegistrationEntity::getGroupRank)
+                        .orderByAsc(RegistrationEntity::getCreateTime)
+        );
+
+        return memberRegistrations.stream()
+                .map(memberReg -> {
+                    UserEntity user = userService.getById(memberReg.getUserId());
+                    Map<String, Object> member = new HashMap<>();
+                    member.put("registrationId", memberReg.getId());
+                    member.put("userId", memberReg.getUserId());
+                    member.put("realName", user != null ? user.getRealName() : "-");
+                    member.put("role", user != null ? user.getRole() : "-");
+                    member.put("targetSchool", memberReg.getTargetSchool());
+                    member.put("groupName", memberReg.getGroupName());
+                    member.put("groupRank", memberReg.getGroupRank());
+                    member.put("phone", user != null && user.getPhone() != null ? user.getPhone() : "-");
+                    member.put("email", user != null && user.getEmail() != null ? user.getEmail() : "-");
+                    return member;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private List<Map<String, Object>> buildFeedbacks(Long activityId) {
+        List<FeedbackEntity> feedbacks = feedbackMapper.selectByActivityId(activityId);
+        return feedbacks.stream()
+                .map(feedback -> {
+                    UserEntity user = userService.getById(feedback.getUserId());
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", feedback.getId());
+                    map.put("activityId", feedback.getActivityId());
+                    map.put("userId", feedback.getUserId());
+                    map.put("userName", user != null ? user.getRealName() : "-");
+                    map.put("userRole", feedback.getUserRole());
+                    map.put("title", feedback.getTitle());
+                    map.put("content", feedback.getContent());
+                    map.put("attachmentUrls", feedback.getAttachmentUrls());
+                    map.put("type", feedback.getType());
+                    map.put("createTime", feedback.getCreateTime());
+                    return map;
+                })
+                .collect(Collectors.toList());
     }
 
     public List<Map<String, Object>> getMyTeams(Long userId) {
@@ -421,7 +681,7 @@ public class RegistrationService {
                     map.put("activityId", reg.getActivityId());
                     map.put("activityTitle", activity != null ? activity.getName() : "-");
                     map.put("realName", user != null ? user.getRealName() : "-");
-                    map.put("userType", user != null ? ("student".equals(user.getRole()) ? "STUDENT" : "TEACHER") : "-");
+                    map.put("userType", user != null ? ("STUDENT".equalsIgnoreCase(user.getRole()) ? "STUDENT" : "TEACHER") : "-");
                     map.put("targetSchool", reg.getTargetSchool());
                     map.put("score", reg.getScore());
                     map.put("createTime", reg.getCreateTime());

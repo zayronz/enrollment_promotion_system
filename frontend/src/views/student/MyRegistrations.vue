@@ -52,6 +52,9 @@
               {{ getStatusLabel(currentRecord.status) }}
             </t-tag>
           </t-descriptions-item>
+          <t-descriptions-item label="审批进度" :span="2">
+            {{ auditProgress || '-' }}
+          </t-descriptions-item>
           <t-descriptions-item label="目标学校" :span="2">
             {{ currentRecord.targetSchool || '-' }}
           </t-descriptions-item>
@@ -66,18 +69,68 @@
           </t-descriptions-item>
         </t-descriptions>
 
+        <div v-if="activityDetail" class="custom-fields">
+          <h4 class="detail-subtitle">活动详情</h4>
+          <t-descriptions :column="1" bordered>
+            <t-descriptions-item label="活动时间">
+              {{ formatDateTime(activityDetail.activityStartTime) }} 至 {{ formatDateTime(activityDetail.activityEndTime) }}
+            </t-descriptions-item>
+            <t-descriptions-item label="报名时间">
+              {{ formatDateTime(activityDetail.registrationStartTime) }} 至 {{ formatDateTime(activityDetail.registrationEndTime) }}
+            </t-descriptions-item>
+            <t-descriptions-item label="活动地点">
+              {{ activityDetail.location || '-' }}
+            </t-descriptions-item>
+            <t-descriptions-item label="活动介绍">
+              <span v-html="activityDetail.description || '-'"></span>
+            </t-descriptions-item>
+          </t-descriptions>
+        </div>
+
         <!-- Custom fields -->
         <div v-if="customFields.length > 0" class="custom-fields">
           <h4 class="detail-subtitle">填报信息</h4>
           <t-descriptions :column="1" bordered>
             <t-descriptions-item
               v-for="field in customFields"
-              :key="field.label"
-              :label="field.label"
+              :key="field.label || field.name"
+              :label="field.label || field.name"
             >
               {{ field.value || '-' }}
             </t-descriptions-item>
           </t-descriptions>
+        </div>
+
+        <div v-if="attachments.length > 0" class="custom-fields">
+          <h4 class="detail-subtitle">报名附件</h4>
+          <t-space direction="vertical">
+            <t-link
+              v-for="(file, index) in attachments"
+              :key="index"
+              theme="primary"
+              @click="openAttachment(file)"
+            >
+              {{ getAttachmentName(file) }}
+            </t-link>
+          </t-space>
+        </div>
+
+        <div v-if="teamMembers.length > 0" class="custom-fields">
+          <h4 class="detail-subtitle">当前分组成员</h4>
+          <t-table :data="teamMembers" :columns="teamColumns" row-key="registrationId" size="small" />
+        </div>
+
+        <div v-if="feedbacks.length > 0" class="custom-fields">
+          <h4 class="detail-subtitle">工作反馈</h4>
+          <t-timeline>
+            <t-timeline-item v-for="item in feedbacks" :key="item.id" dot-color="primary">
+              <div class="timeline-label">{{ item.title || '反馈' }}</div>
+              <div class="timeline-desc">
+                {{ item.userName || '反馈人' }}：<span v-html="item.content || '-'"></span>
+              </div>
+              <div class="timeline-time">{{ formatDateTime(item.createTime) }}</div>
+            </t-timeline-item>
+          </t-timeline>
         </div>
 
         <!-- Audit timeline -->
@@ -107,13 +160,19 @@
 import { ref, onMounted } from 'vue'
 import { registrationApi } from '@/api/registeration'
 import { MessagePlugin } from 'tdesign-vue-next'
+import { getFileUrl } from '@/utils/file'
 
 const records = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const currentRecord = ref(null)
 const customFields = ref([])
+const attachments = ref([])
 const auditLogs = ref([])
+const activityDetail = ref(null)
+const teamMembers = ref([])
+const feedbacks = ref([])
+const auditProgress = ref('')
 
 const pagination = ref({
   current: 1,
@@ -128,6 +187,13 @@ const columns = [
   { colKey: 'createTime', title: '报名时间', width: 160, cell: (_, { row }) => formatDateTime(row.createTime) },
   { colKey: 'status', title: '审核状态', width: 100 },
   { colKey: 'action', title: '操作', width: 120 }
+]
+
+const teamColumns = [
+  { colKey: 'realName', title: '姓名', width: 100 },
+  { colKey: 'role', title: '角色', width: 100 },
+  { colKey: 'groupRank', title: '组内排名', width: 100 },
+  { colKey: 'phone', title: '联系电话', ellipsis: true }
 ]
 
 const fetchRegistrations = async () => {
@@ -158,11 +224,21 @@ const showDetail = async (row) => {
     const res = await registrationApi.getRegistrationDetail(row.id)
     const detail = res.data
     customFields.value = detail.customFields || []
+    attachments.value = detail.attachments || []
     auditLogs.value = detail.auditLogs || []
+    activityDetail.value = detail.activityDetail || null
+    teamMembers.value = detail.teamMembers || []
+    feedbacks.value = detail.feedbacks || []
+    auditProgress.value = detail.auditProgress || ''
   } catch (err) {
     console.error('获取详情失败', err)
     customFields.value = []
+    attachments.value = []
     auditLogs.value = []
+    activityDetail.value = null
+    teamMembers.value = []
+    feedbacks.value = []
+    auditProgress.value = ''
   }
   dialogVisible.value = true
 }
@@ -180,6 +256,20 @@ const handleWithdraw = async (id) => {
 const formatDateTime = (str) => {
   if (!str) return '-'
   return new Date(str).toLocaleString('zh-CN')
+}
+
+const getAttachmentName = (file) => {
+  const path = typeof file === 'string' ? file : (file?.filePath || file?.url || '')
+  return path ? path.split('/').pop() : '附件文件'
+}
+
+const openAttachment = (file) => {
+  const path = typeof file === 'string' ? file : (file?.filePath || file?.url)
+  if (!path) {
+    MessagePlugin.warning('附件地址不存在')
+    return
+  }
+  window.open(getFileUrl(path), '_blank')
 }
 
 const getStatusTheme = (status) => {

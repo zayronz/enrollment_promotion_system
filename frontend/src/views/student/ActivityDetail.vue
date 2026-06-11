@@ -3,15 +3,12 @@
     <t-loading v-if="loading" text="加载中..." size="small" class="loading-wrap" />
 
     <div v-else-if="activity" class="detail-body">
-      <!-- Cover image / banner carousel -->
-      <div v-if="activity.bannerUrls && activity.bannerUrls.length" class="cover-swiper">
-        <t-swiper :autoplay="true">
-          <t-swiper-item v-for="(url, index) in activity.bannerUrls" :key="index">
-            <div class="cover-slide" :style="{ backgroundImage: `url(${getFileUrl(url)})` }" />
-          </t-swiper-item>
-        </t-swiper>
-      </div>
-      <div v-else-if="activity.bannerUrl" class="cover-image" :style="{ backgroundImage: `url(${getFileUrl(activity.bannerUrl)})` }" />
+      <!-- Cover image -->
+      <div
+        v-if="activity.bannerUrl"
+        class="cover-image"
+        :style="{ backgroundImage: `url(${getFileUrl(activity.bannerUrl)})` }"
+      />
 
       <!-- Video -->
       <div v-if="activity.videoUrl" class="video-section">
@@ -47,36 +44,12 @@
         <!-- Register button -->
         <div v-if="canRegister" class="register-area">
           <t-button
-            v-if="!alreadyRegistered"
             theme="primary"
             size="large"
+            :disabled="alreadyRegistered || activity.status === 2"
             @click="goRegister"
           >
-            立即报名
-          </t-button>
-          <t-button
-            v-else-if="canReApply"
-            theme="warning"
-            size="large"
-            @click="goRegister"
-          >
-            重新报名
-          </t-button>
-          <t-button
-            v-else-if="activity.status === 2"
-            theme="default"
-            size="large"
-            disabled
-          >
-            已结束
-          </t-button>
-          <t-button
-            v-else
-            theme="default"
-            size="large"
-            disabled
-          >
-            {{ registrationStatus === 0 ? '审核中' : registrationStatus === 1 ? '学院审核通过' : registrationStatus === 2 ? '报名成功' : '已报名' }}
+            {{ alreadyRegistered ? '已报名' : activity.status === 2 ? '已结束' : '立即报名' }}
           </t-button>
         </div>
       </div>
@@ -125,7 +98,6 @@ const router = useRouter()
 const activity = ref(null)
 const loading = ref(true)
 const alreadyRegistered = ref(false)
-const registrationStatus = ref(null) // 保存报名状态
 
 const canRegister = computed(() => {
   if (!activity.value) return false
@@ -141,30 +113,16 @@ const canRegister = computed(() => {
   return true
 })
 
-// 判断是否允许重新报名（被拒绝或已撤回后可以重新报名）
-const canReApply = computed(() => {
-  return registrationStatus.value === 3 || registrationStatus.value === 4 // 3=已拒绝, 4=已撤回
-})
-
 const fetchDetail = async () => {
   loading.value = true
   try {
     const res = await activityApi.getActivityDetail(route.params.id)
     activity.value = res.data
 
-    // Check if already registered and get status
+    // 检查当前用户是否已报名
     try {
-      const regRes = await registrationApi.getMyRegistrations({ page: 1, size: 100 })
-      const myRecords = regRes.data?.records || []
-      const existingRegistration = myRecords.find(r => r.activityId === activity.value.id)
-      if (existingRegistration) {
-        alreadyRegistered.value = true
-        registrationStatus.value = existingRegistration.status
-        console.log('用户报名状态:', existingRegistration.status)
-      } else {
-        alreadyRegistered.value = false
-        registrationStatus.value = null
-      }
+      const statusRes = await registrationApi.getRegistrationStatus(activity.value.id)
+      alreadyRegistered.value = !!statusRes.data?.registered
     } catch (e) {
       console.error(e)
     }
@@ -218,18 +176,6 @@ onMounted(fetchDetail)
 }
 .detail-body {
   max-width: 860px;
-}
-.cover-swiper {
-  height: 280px;
-  border-radius: 12px;
-  margin-bottom: 24px;
-  overflow: hidden;
-}
-.cover-slide {
-  height: 100%;
-  background-size: cover;
-  background-position: center;
-  background-color: #f0f2f5;
 }
 .cover-image {
   height: 280px;
@@ -313,7 +259,6 @@ onMounted(fetchDetail)
 }
 
 @media (max-width: 640px) {
-  .cover-swiper,
   .cover-image {
     height: 180px;
   }

@@ -2,7 +2,6 @@ package com.edu.enrollment.dto;
 
 import lombok.Data;
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 @Data
@@ -24,8 +23,9 @@ public class UserRegisterDTO {
     @NotBlank(message = "角色不能为空")
     private String role;
 
-    @NotNull(message = "学院不能为空")
     private Long collegeId;
+
+    private String collegeName;
 
     private Integer grade;
 
