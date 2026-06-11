@@ -21,9 +21,9 @@
         <t-input v-model="form.location" placeholder="请输入活动地点" />
       </t-form-item>
 
-      <t-form-item label="活动时间" name="activityTime">
+      <t-form-item label="报名时间" name="registrationTime">
         <t-date-range-picker
-          v-model="form.activityTime"
+          v-model="form.registrationTime"
           enable-time-picker
           format="YYYY-MM-DD HH:mm:ss"
           :placeholder="['开始时间', '结束时间']"
@@ -31,9 +31,9 @@
         />
       </t-form-item>
 
-      <t-form-item label="报名时间" name="registrationTime">
+      <t-form-item label="活动时间" name="activityTime">
         <t-date-range-picker
-          v-model="form.registrationTime"
+          v-model="form.activityTime"
           enable-time-picker
           format="YYYY-MM-DD HH:mm:ss"
           :placeholder="['开始时间', '结束时间']"
