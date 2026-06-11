@@ -8,7 +8,6 @@
       </t-button>
     </div>
 
-    <!-- Search & filter -->
     <div class="filter-bar">
       <t-input
         v-model="keyword"
@@ -42,11 +41,11 @@
     >
       <template #userType="{ row }">
         <t-tag
-          :theme="row.userType === 'STUDENT' ? 'primary' : 'warning'"
+          :theme="row.userRole === 'STUDENT' ? 'primary' : 'warning'"
           variant="light"
           size="small"
         >
-          {{ row.userType === 'STUDENT' ? '学生' : '教师' }}
+          {{ row.userRole === 'STUDENT' ? '学生' : '教师' }}
         </t-tag>
       </template>
       <template #action="{ row }">
@@ -61,11 +60,10 @@
       </template>
     </t-table>
 
-    <!-- Submit feedback dialog -->
     <t-dialog
       v-model:visible="submitVisible"
       header="提交工作总结"
-      width="680px"
+      width="720px"
       :confirm-btn="{ content: '提交', theme: 'primary' }"
       @confirm="handleSubmit"
     >
@@ -88,22 +86,10 @@
           <t-input v-model="submitForm.title" placeholder="请输入总结标题" clearable />
         </t-form-item>
         <t-form-item label="总结内容" name="content">
-          <t-textarea
-            v-model="submitForm.content"
-            placeholder="请输入工作总结内容..."
-            :autosize="{ minRows: 6, maxRows: 14 }"
-          />
+          <RichTextEditor v-model="submitForm.content" />
         </t-form-item>
         <t-form-item label="附件上传">
-          <t-upload
-            v-model="submitFileList"
-            :action="uploadUrl"
-            :headers="uploadHeaders"
-            :max="5"
-            :size-limit="{ size: 20, unit: 'MB' }"
-            theme="file-flow"
-            :abridge-name="[8, 6]"
-          />
+          <FileUploader v-model="submitFileList" :multiple="true" />
         </t-form-item>
       </t-form>
     </t-dialog>
@@ -166,6 +152,8 @@ import { activityApi } from '@/api/activity'
 import { getToken } from '@/utils/auth'
 import { SearchIcon, AddIcon, FileIcon } from 'tdesign-icons-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
+import RichTextEditor from '@/components/business/RichTextEditor.vue'
+import FileUploader from '@/components/business/FileUploader.vue'
 
 const records = ref([])
 const loading = ref(false)
@@ -216,9 +204,9 @@ const fetchData = async () => {
   try {
     const res = activityFilter.value
       ? await feedbackApi.getActivityFeedbacks(activityFilter.value)
-      : await feedbackApi.getAllFeedbacks()
-    records.value = res.data?.records || []
-    pagination.value.total = res.data?.total || 0
+      : await feedbackApi.getCollegeFeedbacks()
+    records.value = res.data || []
+    pagination.value.total = records.value.length
   } catch (err) {
     console.error('获取反馈列表失败', err)
   } finally {
@@ -255,17 +243,23 @@ const handleSubmit = async () => {
   if (valid !== true) return
 
   try {
+    const attachmentUrls = Array.isArray(submitFileList.value) 
+      ? submitFileList.value.join(',') 
+      : ''
+    
     await feedbackApi.submit({
       activityId: submitForm.value.activityId,
       title: submitForm.value.title,
       content: submitForm.value.content,
-      fileIds: submitFileList.value.map(f => f.response?.data || f.url).filter(Boolean)
+      attachmentUrls,
+      type: 1
     })
     MessagePlugin.success('提交成功')
     submitVisible.value = false
     fetchData()
   } catch (err) {
     console.error('提交反馈失败', err)
+    MessagePlugin.error(err.response?.data?.message || '提交失败')
   }
 }
 
