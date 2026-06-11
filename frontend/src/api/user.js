@@ -63,5 +63,10 @@ export const userApi = {
     // 验证忘记密码邮箱验证码
     verifyForgotPasswordCode(data) {
         return request.post('/user/forgot-password/verify', data)
+    },
+
+    // 本地演示：模拟统一身份认证平台设置新密码
+    identityPasswordReset(data) {
+        return request.post('/user/identity-password-reset', data)
     }
 }

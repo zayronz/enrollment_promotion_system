@@ -14,6 +14,7 @@ import com.edu.enrollment.mapper.AuditRecordMapper;
 import com.edu.enrollment.mapper.FeedbackMapper;
 import com.edu.enrollment.mapper.RegistrationMapper;
 import com.edu.enrollment.utils.SchoolNameNormalizer;
+import com.edu.enrollment.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -106,6 +107,7 @@ public class RegistrationService {
 
     private Map<String, Object> buildRegistrationFormData(RegistrationSubmitDTO dto, UserEntity user, String normalizedSchool) {
         Map<String, Object> data = new HashMap<>();
+        UserVO userInfo = userService.getUserInfo(user.getId());
         if (dto.getFormData() != null) {
             data.putAll(dto.getFormData());
         }
@@ -115,6 +117,8 @@ public class RegistrationService {
                 "realName", user.getRealName() != null ? user.getRealName() : "",
                 "username", user.getUsername() != null ? user.getUsername() : "",
                 "role", user.getRole() != null ? user.getRole() : "",
+                "collegeId", user.getCollegeId() != null ? user.getCollegeId() : "",
+                "collegeName", userInfo.getCollegeName() != null ? userInfo.getCollegeName() : "",
                 "phone", user.getPhone() != null ? user.getPhone() : "",
                 "email", user.getEmail() != null ? user.getEmail() : ""
         ));
@@ -228,9 +232,11 @@ public class RegistrationService {
     /**
      * 自动分组和组内排名
      */
-    private void autoGroup(Long activityId, String schoolName) {
+    public void autoGroup(Long activityId, String schoolName) {
         List<RegistrationEntity> sameSchoolRegs = registrationMapper
-                .findByActivityAndSchool(activityId, schoolName);
+                .findByActivityAndSchool(activityId, schoolName).stream()
+                .filter(reg -> reg.getStatus() == 1 || reg.getStatus() == 2)
+                .collect(Collectors.toList());
 
         // 按成绩/绩点降序排列
         sameSchoolRegs.sort(Comparator.comparing(RegistrationEntity::getScore,
@@ -241,6 +247,57 @@ public class RegistrationService {
             RegistrationEntity reg = sameSchoolRegs.get(i);
             registrationMapper.updateGroupInfo(reg.getId(), groupName, i + 1);
         }
+    }
+
+    public List<Map<String, Object>> getActivityGroups(Long activityId) {
+        List<RegistrationEntity> registrations = registrationMapper.selectList(
+                new LambdaQueryWrapper<RegistrationEntity>()
+                        .eq(RegistrationEntity::getActivityId, activityId)
+                        .in(RegistrationEntity::getStatus, 1, 2)
+                        .isNotNull(RegistrationEntity::getTargetSchool)
+                        .orderByAsc(RegistrationEntity::getTargetSchool)
+                        .orderByAsc(RegistrationEntity::getGroupRank)
+                        .orderByDesc(RegistrationEntity::getScore)
+        );
+
+        return registrations.stream()
+                .collect(Collectors.groupingBy(
+                        RegistrationEntity::getTargetSchool,
+                        java.util.LinkedHashMap::new,
+                        Collectors.toList()
+                ))
+                .entrySet()
+                .stream()
+                .map(entry -> {
+                    String schoolName = entry.getKey();
+                    List<Map<String, Object>> members = entry.getValue().stream()
+                            .sorted(Comparator.comparing(RegistrationEntity::getScore,
+                                    Comparator.nullsLast(Comparator.reverseOrder())))
+                            .map(reg -> {
+                                UserEntity user = userService.getById(reg.getUserId());
+                                UserVO userInfo = user != null ? userService.getUserInfo(user.getId()) : null;
+                                Map<String, Object> member = new HashMap<>();
+                                member.put("registrationId", reg.getId());
+                                member.put("realName", user != null ? user.getRealName() : "-");
+                                member.put("username", user != null ? user.getUsername() : "-");
+                                member.put("role", user != null ? user.getRole() : "-");
+                                member.put("collegeName", userInfo != null && userInfo.getCollegeName() != null ? userInfo.getCollegeName() : "-");
+                                member.put("score", reg.getScore());
+                                member.put("groupRank", reg.getGroupRank());
+                                member.put("status", reg.getStatus());
+                                member.put("phone", user != null && user.getPhone() != null ? user.getPhone() : "-");
+                                return member;
+                            })
+                            .collect(Collectors.toList());
+
+                    Map<String, Object> group = new HashMap<>();
+                    group.put("groupName", schoolName + "招生组");
+                    group.put("targetSchool", schoolName);
+                    group.put("memberCount", members.size());
+                    group.put("members", members);
+                    return group;
+                })
+                .collect(Collectors.toList());
     }
 
     public Map<String, Object> getMyRegistrations(Long userId, Integer page, Integer size) {
@@ -264,6 +321,7 @@ public class RegistrationService {
                     map.put("status", reg.getStatus());
                     map.put("currentNode", reg.getCurrentNode());
                     map.put("createTime", reg.getCreateTime());
+                    map.put("feedbackDeadline", activity != null ? activityService.getFeedbackDeadline(activity.getId()) : null);
                     map.put("groupName", reg.getGroupName());
                     map.put("groupRank", reg.getGroupRank());
                     map.put("rejectReason", reg.getRejectReason());
@@ -423,6 +481,7 @@ public class RegistrationService {
     public List<Map<String, Object>> getMyTeams(Long userId) {
         LambdaQueryWrapper<RegistrationEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(RegistrationEntity::getUserId, userId)
+                .in(RegistrationEntity::getStatus, 1, 2)
                 .isNotNull(RegistrationEntity::getGroupName)
                 .ne(RegistrationEntity::getGroupName, "")
                 .orderByDesc(RegistrationEntity::getCreateTime);
@@ -436,6 +495,7 @@ public class RegistrationService {
                     LambdaQueryWrapper<RegistrationEntity> memberWrapper = new LambdaQueryWrapper<>();
                     memberWrapper.eq(RegistrationEntity::getActivityId, reg.getActivityId())
                             .eq(RegistrationEntity::getGroupName, reg.getGroupName())
+                            .in(RegistrationEntity::getStatus, 1, 2)
                             .orderByAsc(RegistrationEntity::getGroupRank)
                             .orderByAsc(RegistrationEntity::getCreateTime);
                     List<RegistrationEntity> memberRegistrations = registrationMapper.selectList(memberWrapper);
@@ -452,6 +512,9 @@ public class RegistrationService {
                                 member.put("phone", user != null && user.getPhone() != null ? user.getPhone() : "-");
                                 member.put("email", user != null && user.getEmail() != null ? user.getEmail() : "-");
                                 member.put("groupRank", memberReg.getGroupRank());
+                                member.put("score", memberReg.getScore());
+                                member.put("status", memberReg.getStatus());
+                                member.put("currentUser", memberReg.getUserId().equals(userId));
                                 return member;
                             })
                             .collect(Collectors.toList());
@@ -470,10 +533,31 @@ public class RegistrationService {
                     team.put("deputyLeader", deputyName);
                     team.put("contact", leaderName);
                     team.put("members", members);
+                    team.put("memberCount", members.size());
+                    team.put("status", reg.getStatus());
+                    team.put("score", reg.getScore());
+                    team.put("latestFeedback", buildLatestFeedback(reg.getActivityId()));
                     team.put("createTime", reg.getCreateTime());
                     return team;
                 })
                 .collect(Collectors.toList());
+    }
+
+    private Map<String, Object> buildLatestFeedback(Long activityId) {
+        List<FeedbackEntity> feedbackList = feedbackMapper.selectByActivityId(activityId);
+        if (feedbackList == null || feedbackList.isEmpty()) {
+            return null;
+        }
+        FeedbackEntity feedback = feedbackList.get(0);
+        UserEntity user = userService.getById(feedback.getUserId());
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", feedback.getId());
+        map.put("title", feedback.getTitle());
+        map.put("content", feedback.getContent());
+        map.put("createTime", feedback.getCreateTime());
+        map.put("userName", user != null ? user.getRealName() : "-");
+        map.put("userId", feedback.getUserId());
+        return map;
     }
 
     public List<Map<String, Object>> getAvailableTeams(Long userId) {
@@ -628,8 +712,14 @@ public class RegistrationService {
         UserEntity auditor = userService.getById(auditorId);
 
         LambdaQueryWrapper<RegistrationEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(RegistrationEntity::getStatus, 0)
-                .eq(RegistrationEntity::getCurrentNode, node);
+        wrapper.eq(RegistrationEntity::getCurrentNode, node);
+
+        // 学院待审核：status=0；学校待审核：学院已通过(status=1) 且流转到 school_audit
+        if ("school_audit".equals(node)) {
+            wrapper.eq(RegistrationEntity::getStatus, 1);
+        } else {
+            wrapper.eq(RegistrationEntity::getStatus, 0);
+        }
 
         // 学院审核员只能看到本学院用户的报名
         if ("COLLEGE".equals(auditor.getRole())) {
@@ -682,12 +772,15 @@ public class RegistrationService {
                     map.put("activityTitle", activity != null ? activity.getName() : "-");
                     map.put("realName", user != null ? user.getRealName() : "-");
                     map.put("userType", user != null ? ("STUDENT".equalsIgnoreCase(user.getRole()) ? "STUDENT" : "TEACHER") : "-");
+                    map.put("collegeName", collegeName);
                     map.put("targetSchool", reg.getTargetSchool());
                     map.put("score", reg.getScore());
                     map.put("createTime", reg.getCreateTime());
                     map.put("collegeId", user != null ? user.getCollegeId() : null);
                     map.put("status", reg.getStatus());
                     map.put("userRole", user != null ? user.getRole() : null);
+                    map.put("attachments", extractAttachments(reg));
+                    map.put("formData", parseFormData(reg));
                     return map;
                 })
                 .collect(Collectors.toList());
@@ -719,6 +812,20 @@ public class RegistrationService {
         result.put("size", size);
         return result;
     }
+
+    private Map<String, Object> parseFormData(RegistrationEntity registration) {
+        Map<String, Object> formData = new HashMap<>();
+        if (registration.getFormData() != null && !registration.getFormData().isBlank()) {
+            formData.putAll(JSONUtil.parseObj(registration.getFormData()));
+        }
+        return formData;
+    }
+
+    private Object extractAttachments(RegistrationEntity registration) {
+        Map<String, Object> formData = parseFormData(registration);
+        return formData.getOrDefault("attachments", List.of());
+    }
+
 
     private Map<String, Object> buildPageResult(Page<RegistrationEntity> page) {
         Map<String, Object> result = new java.util.HashMap<>();

@@ -1,6 +1,8 @@
 package com.edu.enrollment.service;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -16,7 +18,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -50,6 +54,25 @@ public class ActivityService {
         }
 
         wrapper.orderByDesc(ActivityEntity::getActivityStartTime);
+
+        if ("STUDENT".equals(currentUser.getRole()) || "TEACHER".equals(currentUser.getRole())) {
+            List<ActivityEntity> filteredEntities = activityMapper.selectList(wrapper).stream()
+                    .filter(activity -> isVisibleForAudience(activity, currentUser))
+                    .filter(activity -> !"STUDENT".equals(currentUser.getRole()) || isEligibleForStudent(activity, currentUser))
+                    .collect(Collectors.toList());
+
+            int fromIndex = Math.min((page - 1) * size, filteredEntities.size());
+            int toIndex = Math.min(fromIndex + size, filteredEntities.size());
+
+            Page<ActivityVO> voPage = new Page<>();
+            voPage.setCurrent(page);
+            voPage.setSize(size);
+            voPage.setTotal(filteredEntities.size());
+            voPage.setRecords(filteredEntities.subList(fromIndex, toIndex).stream()
+                    .map(this::toVO)
+                    .collect(Collectors.toList()));
+            return voPage;
+        }
 
         Page<ActivityEntity> entityPage = activityMapper.selectPage(new Page<>(page, size), wrapper);
 
@@ -92,7 +115,7 @@ public class ActivityService {
         entity.setCoverImage(dto.getCoverImage());
         entity.setStatus(0); // 草稿
         entity.setAuditFlow(JSONUtil.toJsonStr(dto.getAuditFlow()));
-        entity.setCustomFields(JSONUtil.toJsonStr(dto.getCustomFields()));
+        entity.setCustomFields(buildCustomFieldsJson(dto));
         entity.setMaxStudentPerSchool(dto.getMaxStudentPerSchool());
         entity.setMaxTeacherPerSchool(dto.getMaxTeacherPerSchool());
         entity.setAutoGroup(dto.getAutoGroup() ? 1 : 0);
@@ -152,7 +175,7 @@ public class ActivityService {
         entity.setVideoUrl(dto.getVideoUrl());
         entity.setCoverImage(dto.getCoverImage());
         entity.setAuditFlow(JSONUtil.toJsonStr(dto.getAuditFlow()));
-        entity.setCustomFields(JSONUtil.toJsonStr(dto.getCustomFields()));
+        entity.setCustomFields(buildCustomFieldsJson(dto));
         entity.setMaxStudentPerSchool(dto.getMaxStudentPerSchool());
         entity.setMaxTeacherPerSchool(dto.getMaxTeacherPerSchool());
         entity.setAutoGroup(dto.getAutoGroup() ? 1 : 0);
@@ -209,6 +232,18 @@ public class ActivityService {
         return entities.stream().map(this::toVO).collect(Collectors.toList());
     }
 
+    /**
+     * 获取首页轮播展示的活动：已发布(status=1) 且 show_on_home=1，按开始时间降序
+     */
+    public List<ActivityVO> getBannerActivities() {
+        LambdaQueryWrapper<ActivityEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ActivityEntity::getStatus, 1)
+               .eq(ActivityEntity::getShowOnHome, 1)
+               .orderByDesc(ActivityEntity::getActivityStartTime);
+        List<ActivityEntity> entities = activityMapper.selectList(wrapper);
+        return entities.stream().map(this::toVO).collect(Collectors.toList());
+    }
+
     private ActivityVO toVO(ActivityEntity entity) {
         ActivityVO vo = new ActivityVO();
         vo.setId(entity.getId());
@@ -227,13 +262,188 @@ public class ActivityService {
         // 处理可能为 null 的 JSON 字段
         vo.setAuditFlow(StrUtil.isNotBlank(entity.getAuditFlow())
                 ? JSONUtil.toList(entity.getAuditFlow(), String.class) : null);
-        vo.setCustomFields(StrUtil.isNotBlank(entity.getCustomFields())
-                ? JSONUtil.parseArray(entity.getCustomFields()) : null);
+        JSONArray customFields = StrUtil.isNotBlank(entity.getCustomFields())
+                ? JSONUtil.parseArray(entity.getCustomFields()) : new JSONArray();
+        applyEligibilityToVO(vo, customFields);
+        applyMetaRulesToVO(vo, customFields);
+        vo.setCustomFields(filterRegistrationFields(customFields));
         vo.setMaxStudentPerSchool(entity.getMaxStudentPerSchool());
         vo.setMaxTeacherPerSchool(entity.getMaxTeacherPerSchool());
         vo.setAutoGroup(entity.getAutoGroup() == 1);
         vo.setShowOnHome(entity.getShowOnHome() != null ? entity.getShowOnHome() : 0);
         return vo;
+    }
+
+    private String buildCustomFieldsJson(ActivityDTO dto) {
+        JSONArray fields = new JSONArray();
+        if (dto.getCustomFields() != null) {
+            fields.addAll(dto.getCustomFields());
+        }
+
+        if (dto.getMinGpa() != null || dto.getMinScore() != null) {
+            JSONObject eligibility = new JSONObject();
+            eligibility.set("type", "eligibility_rule");
+            eligibility.set("name", "__eligibility_rule__");
+            eligibility.set("label", "资格条件");
+            eligibility.set("minGpa", dto.getMinGpa());
+            eligibility.set("minScore", dto.getMinScore());
+            fields.add(eligibility);
+        }
+
+        if ((dto.getAllowedCollegeIds() != null && !dto.getAllowedCollegeIds().isEmpty())
+                || (dto.getAllowedUsernames() != null && !dto.getAllowedUsernames().isEmpty())) {
+            JSONObject audience = new JSONObject();
+            audience.set("type", "audience_rule");
+            audience.set("name", "__audience_rule__");
+            audience.set("label", "参与人群");
+            audience.set("allowedCollegeIds", dto.getAllowedCollegeIds());
+            audience.set("allowedUsernames", dto.getAllowedUsernames());
+            fields.add(audience);
+        }
+
+        if (dto.getFeedbackDeadline() != null) {
+            JSONObject feedbackRule = new JSONObject();
+            feedbackRule.set("type", "feedback_rule");
+            feedbackRule.set("name", "__feedback_rule__");
+            feedbackRule.set("label", "反馈规则");
+            feedbackRule.set("feedbackDeadline", dto.getFeedbackDeadline().toString());
+            fields.add(feedbackRule);
+        }
+        return JSONUtil.toJsonStr(fields);
+    }
+
+    private JSONArray filterRegistrationFields(JSONArray fields) {
+        JSONArray result = new JSONArray();
+        for (Object item : fields) {
+            JSONObject field = JSONUtil.parseObj(item);
+            String type = field.getStr("type");
+            if (!"eligibility_rule".equals(type)
+                    && !"audience_rule".equals(type)
+                    && !"feedback_rule".equals(type)) {
+                result.add(field);
+            }
+        }
+        return result;
+    }
+
+    private JSONObject getEligibilityRule(ActivityEntity entity) {
+        if (StrUtil.isBlank(entity.getCustomFields())) {
+            return null;
+        }
+        JSONArray fields = JSONUtil.parseArray(entity.getCustomFields());
+        for (Object item : fields) {
+            JSONObject field = JSONUtil.parseObj(item);
+            if ("eligibility_rule".equals(field.getStr("type"))) {
+                return field;
+            }
+        }
+        return null;
+    }
+
+    private void applyEligibilityToVO(ActivityVO vo, JSONArray fields) {
+        for (Object item : fields) {
+            JSONObject field = JSONUtil.parseObj(item);
+            if ("eligibility_rule".equals(field.getStr("type"))) {
+                vo.setMinGpa(field.getBigDecimal("minGpa"));
+                vo.setMinScore(field.getBigDecimal("minScore"));
+                return;
+            }
+        }
+    }
+
+    private void applyMetaRulesToVO(ActivityVO vo, JSONArray fields) {
+        for (Object item : fields) {
+            JSONObject field = JSONUtil.parseObj(item);
+            if ("audience_rule".equals(field.getStr("type"))) {
+                vo.setAllowedCollegeIds(toLongList(field.getJSONArray("allowedCollegeIds")));
+                vo.setAllowedUsernames(toStringList(field.getJSONArray("allowedUsernames")));
+            }
+            if ("feedback_rule".equals(field.getStr("type"))) {
+                String deadline = field.getStr("feedbackDeadline");
+                if (StrUtil.isNotBlank(deadline)) {
+                    vo.setFeedbackDeadline(LocalDateTime.parse(deadline));
+                }
+            }
+        }
+    }
+
+    public LocalDateTime getFeedbackDeadline(Long activityId) {
+        ActivityEntity entity = activityMapper.selectById(activityId);
+        if (entity == null || StrUtil.isBlank(entity.getCustomFields())) {
+            return null;
+        }
+        JSONArray fields = JSONUtil.parseArray(entity.getCustomFields());
+        for (Object item : fields) {
+            JSONObject field = JSONUtil.parseObj(item);
+            if ("feedback_rule".equals(field.getStr("type"))) {
+                String deadline = field.getStr("feedbackDeadline");
+                return StrUtil.isBlank(deadline) ? null : LocalDateTime.parse(deadline);
+            }
+        }
+        return null;
+    }
+
+    private boolean isVisibleForAudience(ActivityEntity activity, UserEntity user) {
+        if (StrUtil.isBlank(activity.getCustomFields())) {
+            return true;
+        }
+        JSONArray fields = JSONUtil.parseArray(activity.getCustomFields());
+        for (Object item : fields) {
+            JSONObject field = JSONUtil.parseObj(item);
+            if ("audience_rule".equals(field.getStr("type"))) {
+                List<Long> collegeIds = toLongList(field.getJSONArray("allowedCollegeIds"));
+                List<String> usernames = toStringList(field.getJSONArray("allowedUsernames"));
+                boolean hasCollegeRule = collegeIds != null && !collegeIds.isEmpty();
+                boolean hasUserRule = usernames != null && !usernames.isEmpty();
+                boolean collegeMatched = hasCollegeRule && user.getCollegeId() != null && collegeIds.contains(user.getCollegeId());
+                boolean userMatched = hasUserRule && usernames.stream().anyMatch(name ->
+                        name.equalsIgnoreCase(user.getUsername()) || name.equals(user.getRealName()));
+                return (!hasCollegeRule && !hasUserRule) || collegeMatched || userMatched;
+            }
+        }
+        return true;
+    }
+
+    private List<Long> toLongList(JSONArray array) {
+        if (array == null) {
+            return Collections.emptyList();
+        }
+        return array.stream().map(item -> Long.valueOf(String.valueOf(item))).collect(Collectors.toList());
+    }
+
+    private List<String> toStringList(JSONArray array) {
+        if (array == null) {
+            return Collections.emptyList();
+        }
+        return array.stream()
+                .map(String::valueOf)
+                .filter(StrUtil::isNotBlank)
+                .collect(Collectors.toList());
+    }
+
+    private boolean isEligibleForStudent(ActivityEntity activity, UserEntity student) {
+        JSONObject rule = getEligibilityRule(activity);
+        if (rule == null) {
+            return true;
+        }
+
+        BigDecimal minGpa = rule.getBigDecimal("minGpa");
+        if (minGpa != null) {
+            BigDecimal studentGpa = student.getGpa();
+            if (studentGpa == null || studentGpa.compareTo(minGpa) < 0) {
+                return false;
+            }
+        }
+
+        // 当前系统学生档案暂无独立“成绩”字段，演示场景下成绩条件使用绩点字段进行同源校验
+        BigDecimal minScore = rule.getBigDecimal("minScore");
+        if (minScore != null) {
+            BigDecimal studentScore = student.getGpa();
+            if (studentScore == null || studentScore.compareTo(minScore) < 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private java.util.Map<String, Object> toAttachmentVO(AttachmentEntity entity) {

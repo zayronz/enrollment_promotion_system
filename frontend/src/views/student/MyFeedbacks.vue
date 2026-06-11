@@ -66,8 +66,12 @@
               :key="opt.value"
               :value="opt.value"
               :label="opt.label"
+              :disabled="opt.expired"
             />
           </t-select>
+          <div class="deadline-tip" v-if="selectedActivityDeadline">
+            反馈截止：{{ formatDateTime(selectedActivityDeadline) }}
+          </div>
         </t-form-item>
         <t-form-item label="反馈标题" name="title">
           <t-input v-model="submitForm.title" placeholder="请输入反馈标题" clearable />
@@ -109,7 +113,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { feedbackApi } from '@/api/feedback'
 import { registrationApi } from '@/api/registeration'
 import { AddIcon } from 'tdesign-icons-vue-next'
@@ -176,8 +180,13 @@ const fetchActivityOptions = async () => {
       r => r.status === 1 || r.status === 2
     )
 
-    // 只显示已通过审核的报名对应的活动
-    activityOptions.value = approvedRegs.map(r => ({ value: r.activityId, label: r.activityTitle }))
+    // 只显示已通过审核的报名对应的活动，超过反馈截止时间的活动禁用提交
+    activityOptions.value = approvedRegs.map(r => ({
+      value: r.activityId,
+      label: r.activityTitle,
+      feedbackDeadline: r.feedbackDeadline,
+      expired: isFeedbackExpired(r.feedbackDeadline)
+    }))
     approvedActivities.value = activityOptions.value
   } catch (err) {
     console.error('获取活动选项失败', err)
@@ -201,9 +210,24 @@ const showSubmitDialog = () => {
   submitVisible.value = true
 }
 
+const selectedActivityDeadline = computed(() => {
+  const item = approvedActivities.value.find(opt => opt.value === submitForm.value.activityId)
+  return item?.feedbackDeadline || ''
+})
+
+const isFeedbackExpired = (deadline) => {
+  return deadline ? new Date(deadline).getTime() < Date.now() : false
+}
+
 const handleSubmitFeedback = async () => {
   const valid = await submitFormRef.value.validate()
   if (valid !== true) return
+
+  const selected = approvedActivities.value.find(opt => opt.value === submitForm.value.activityId)
+  if (selected?.expired) {
+    MessagePlugin.warning('已过反馈时间，无法提交反馈')
+    return
+  }
 
   try {
     let attachmentUrls = ''
@@ -252,6 +276,7 @@ onMounted(() => {
 .page-title { font-size: 18px; font-weight: 600; color: var(--td-text-color-primary); margin: 0; }
 .filter-bar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
 .filter-select { width: 240px; flex-shrink: 0; }
+.deadline-tip { margin-top: 6px; color: var(--td-text-color-placeholder); font-size: 12px; }
 .content-cell { font-size: 13px; color: var(--td-text-color-secondary); line-height: 1.5; }
 .detail-content { max-height: 60vh; overflow-y: auto; }
 .feedback-body { margin-top: 16px; }

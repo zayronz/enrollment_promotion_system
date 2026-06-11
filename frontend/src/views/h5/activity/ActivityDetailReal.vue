@@ -214,7 +214,8 @@ onMounted(fetchDetail)
 
 .cover-image img {
   width: 100%;
-  height: 200px;
+  height: auto;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   display: block;
 }

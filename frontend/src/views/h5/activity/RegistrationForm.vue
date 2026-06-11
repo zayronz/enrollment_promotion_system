@@ -14,8 +14,11 @@
         <div class="basic-info">
           <div class="basic-title">报名人基本信息</div>
           <div class="basic-row"><span>姓名</span><strong>{{ userStore.realName || '-' }}</strong></div>
+          <div class="basic-row"><span>{{ userStore.role === 'TEACHER' ? '工号' : '学号' }}</span><strong>{{ userStore.userInfo?.username || '-' }}</strong></div>
+          <div class="basic-row"><span>学院</span><strong>{{ userStore.collegeName || '-' }}</strong></div>
           <div class="basic-row"><span>手机号</span><strong>{{ userStore.userInfo?.phone || '-' }}</strong></div>
           <div class="basic-row"><span>邮箱</span><strong>{{ userStore.userInfo?.email || '-' }}</strong></div>
+          <div class="basic-tip">以上信息自动从个人资料读取，不可在报名时修改。</div>
         </div>
 
         <t-alert
@@ -39,6 +42,8 @@
               :options="schoolSuggestions"
               placeholder="请输入招生对象学校名称"
               clearable
+              @change="handleSchoolInput"
+              @focus="handleSchoolInput(formData.targetSchool)"
             />
           </t-form-item>
 
@@ -97,9 +102,12 @@
               :action="uploadUrl"
               :headers="uploadHeaders"
               :max="5"
+              :accept="attachmentAccept"
+              :allow-upload="allowAttachmentUpload"
               :size-limit="{ size: 10, unit: 'MB' }"
               theme="file-flow"
               :abridge-name="[8, 6]"
+              tips="仅支持 PDF、Word、Excel 文件，单个文件不超过 10MB"
             />
           </t-form-item>
 
@@ -148,7 +156,9 @@ const registrationStatus = reactive({
   message: ''
 })
 
-const uploadUrl = '/api/file/upload'
+const uploadUrl = '/api/file/upload?bizType=registrationAttachment'
+const attachmentAccept = '.pdf,.doc,.docx,.xls,.xlsx'
+const allowedAttachmentExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx']
 const uploadHeaders = computed(() => ({
   Authorization: `Bearer ${getToken()}`
 }))
@@ -159,6 +169,16 @@ const formData = reactive({
 
 const rules = {
   targetSchool: [{ required: true, message: '请输入目标学校', trigger: 'blur' }]
+}
+
+const allowAttachmentUpload = (file) => {
+  const fileName = file?.name || ''
+  const ext = fileName.split('.').pop()?.toLowerCase()
+  if (!allowedAttachmentExts.includes(ext)) {
+    MessagePlugin.warning('不支持该文件类型，请上传PDF/Word/Excel')
+    return false
+  }
+  return true
 }
 
 const fetchActivity = async () => {
@@ -229,7 +249,7 @@ const handleSubmit = async (e) => {
       try {
         const payload = {
           activityId: route.params.id,
-          targetSchool: formData.targetSchool,
+          targetSchool: normalizeSchoolBeforeSubmit(formData.targetSchool),
           customFields: customFields.value.map((field, index) => ({
             name: field.name,
             type: field.type,
@@ -247,6 +267,14 @@ const handleSubmit = async (e) => {
       }
     }
   })
+}
+
+const normalizeSchoolBeforeSubmit = (value) => {
+  const input = String(value || '').trim()
+  const exactOption = schoolSuggestions.value.find(item => item.value === input || item.label === input)
+  if (exactOption) return exactOption.value
+  const prefixOption = schoolSuggestions.value.find(item => item.value?.includes(input) || item.label?.includes(input))
+  return prefixOption?.value || input
 }
 
 onMounted(fetchActivity)
@@ -321,5 +349,12 @@ onBeforeUnmount(() => {
 .basic-row strong {
   color: #111827;
   font-weight: 500;
+}
+.basic-tip {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #d1d5db;
+  color: #9ca3af;
+  font-size: 12px;
 }
 </style>

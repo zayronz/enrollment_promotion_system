@@ -54,5 +54,10 @@ export const registrationApi = {
     // 获取待审核列表（支持分页、筛选等参数）
     getPendingAudit(params = {}) {
         return request.get('/registration/pending', { params })
+    },
+
+    // 获取活动自动分组和组内排名
+    getActivityGroups(activityId) {
+        return request.get(`/registration/activity/${activityId}/groups`)
     }
 }

@@ -55,12 +55,13 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
 
-      <div class="menu-item" @click="router.push('/h5/approval')">
+      <div class="menu-item" @click="router.push(approvalMenu.path)">
         <div class="menu-icon" style="background: #fef3c7;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         </div>
         <div class="menu-info">
-          <span class="menu-name">报名审批</span>
+          <span class="menu-name">{{ approvalMenu.name }}</span>
+          <span v-if="approvalMenu.badge" class="menu-badge">{{ approvalMenu.badge }}</span>
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
@@ -92,10 +93,50 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/store/modules/user'
 import H5BottomNav from '../components/H5BottomNav.vue'
 
 const router = useRouter()
+const userStore = useUserStore()
+
+const approvalMenu = computed(() => {
+  const role = userStore.role
+  if (role === 'STUDENT') {
+    return {
+      name: '报名审批进度',
+      path: '/h5/my-registrations',
+      badge: '查看状态'
+    }
+  }
+  if (role === 'TEACHER') {
+    return {
+      name: '报名审批',
+      path: '/h5/approval',
+      badge: ''
+    }
+  }
+  if (role === 'COLLEGE') {
+    return {
+      name: '报名审批',
+      path: '/h5/college/pending',
+      badge: ''
+    }
+  }
+  if (role === 'SCHOOL') {
+    return {
+      name: '报名审批',
+      path: '/h5/school/audit-pending',
+      badge: ''
+    }
+  }
+  return {
+    name: '报名审批进度',
+    path: '/h5/my-registrations',
+    badge: ''
+  }
+})
 </script>
 
 <style scoped>

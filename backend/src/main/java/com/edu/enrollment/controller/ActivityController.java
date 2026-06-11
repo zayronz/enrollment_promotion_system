@@ -31,6 +31,11 @@ public class ActivityController {
         return ResultVO.success(activityService.getOpenActivities());
     }
 
+    @GetMapping("/banner")
+    public ResultVO<?> bannerActivities() {
+        return ResultVO.success(activityService.getBannerActivities());
+    }
+
     @GetMapping("/{id}")
     public ResultVO<?> detail(@PathVariable Long id) {
         return ResultVO.success(activityService.getDetail(id));

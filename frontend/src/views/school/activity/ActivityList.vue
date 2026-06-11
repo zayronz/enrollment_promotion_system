@@ -92,6 +92,9 @@
           <t-button theme="primary" variant="text" size="small" @click="handleDetail(row)">
             详情
           </t-button>
+          <t-button theme="success" variant="text" size="small" @click="showGroups(row)">
+            分组
+          </t-button>
           <t-popconfirm
             content="确定要删除此活动吗？"
             confirm-btn="删除"
@@ -102,6 +105,31 @@
         </t-space>
       </template>
     </t-table>
+
+    <t-dialog
+      v-model:visible="groupVisible"
+      :header="`${currentActivity?.name || '活动'} - 分组与排名`"
+      width="820px"
+      :footer="false"
+    >
+      <t-loading v-if="groupLoading" text="加载中..." />
+      <div v-else-if="activityGroups.length" class="group-list">
+        <div v-for="group in activityGroups" :key="group.targetSchool" class="group-card">
+          <div class="group-header">
+            <strong>{{ group.groupName }}</strong>
+            <t-tag theme="primary" variant="light">{{ group.memberCount }} 人</t-tag>
+          </div>
+          <t-table
+            :data="group.members"
+            :columns="groupColumns"
+            row-key="registrationId"
+            size="small"
+            bordered
+          />
+        </div>
+      </div>
+      <t-empty v-else description="暂无已通过报名记录，或活动未开启自动分组" />
+    </t-dialog>
   </div>
 </template>
 
@@ -109,6 +137,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { activityApi } from '@/api/activity'
+import { registrationApi } from '@/api/registeration'
 import { SearchIcon, AddIcon } from 'tdesign-icons-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
 
@@ -119,6 +148,10 @@ const loading = ref(false)
 const keyword = ref('')
 const typeFilter = ref('')
 const statusFilter = ref('')
+const groupVisible = ref(false)
+const groupLoading = ref(false)
+const currentActivity = ref(null)
+const activityGroups = ref([])
 
 const pagination = ref({
   current: 1,
@@ -133,7 +166,17 @@ const columns = [
   { colKey: 'showOnHome', title: '首页展示', width: 100 },
   { colKey: 'status', title: '状态', width: 100 },
   { colKey: 'createTime', title: '创建时间', width: 160, cell: (_, { row }) => formatDateTime(row.createTime) },
-  { colKey: 'action', title: '操作', width: 220 }
+  { colKey: 'action', title: '操作', width: 260 }
+]
+
+const groupColumns = [
+  { colKey: 'groupRank', title: '排名', width: 70, cell: (_, { rowIndex }) => rowIndex + 1 },
+  { colKey: 'realName', title: '姓名', width: 100 },
+  { colKey: 'username', title: '账号', width: 110 },
+  { colKey: 'role', title: '角色', width: 90, cell: (_, { row }) => row.role === 'STUDENT' ? '学生' : row.role === 'TEACHER' ? '教师' : row.role },
+  { colKey: 'collegeName', title: '学院', ellipsis: true },
+  { colKey: 'score', title: '绩点/成绩', width: 100, cell: (_, { row }) => row.score ?? '-' },
+  { colKey: 'phone', title: '联系电话', width: 130 }
 ]
 
 const fetchData = async () => {
@@ -180,6 +223,20 @@ const handleEdit = (row) => {
 
 const handleDetail = (row) => {
   router.push(`/school/activity/detail/${row.id}`)
+}
+
+const showGroups = async (row) => {
+  currentActivity.value = row
+  groupVisible.value = true
+  groupLoading.value = true
+  try {
+    const res = await registrationApi.getActivityGroups(row.id)
+    activityGroups.value = res.data || []
+  } catch (err) {
+    console.error('获取活动分组失败', err)
+  } finally {
+    groupLoading.value = false
+  }
 }
 
 const handleDelete = async (id) => {
@@ -233,6 +290,9 @@ onMounted(fetchData)
 .filter-bar { display: flex; gap: 12px; margin-bottom: 20px; }
 .filter-input { flex: 1; }
 .filter-select { width: 160px; flex-shrink: 0; }
+.group-list { display: flex; flex-direction: column; gap: 16px; max-height: 65vh; overflow-y: auto; }
+.group-card { border: 1px solid var(--td-border-level-1-color); border-radius: 10px; padding: 12px; }
+.group-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 
 @media (max-width: 640px) {
   .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }

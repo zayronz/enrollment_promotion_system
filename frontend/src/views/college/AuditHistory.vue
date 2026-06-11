@@ -75,7 +75,7 @@
     <t-dialog
       v-model:visible="dialogVisible"
       header="审核详情"
-      width="560px"
+      width="680px"
       :footer="false"
     >
       <div v-if="currentRecord" class="detail-content">
@@ -102,6 +102,20 @@
             </t-tag>
           </t-descriptions-item>
           <t-descriptions-item label="审核意见">{{ currentRecord.comment || '-' }}</t-descriptions-item>
+          <t-descriptions-item label="报名附件">
+            <div v-if="normalizeAttachments(currentRecord.attachments).length" class="attachment-list">
+              <t-link
+                v-for="(file, index) in normalizeAttachments(currentRecord.attachments)"
+                :key="index"
+                theme="primary"
+                hover="color"
+                @click="openAttachment(file)"
+              >
+                {{ getAttachmentName(file, index) }}
+              </t-link>
+            </div>
+            <span v-else>-</span>
+          </t-descriptions-item>
           <t-descriptions-item label="审核时间">{{ formatDateTime(currentRecord.createTime) }}</t-descriptions-item>
         </t-descriptions>
       </div>
@@ -114,6 +128,8 @@ import { ref, onMounted } from 'vue'
 import { auditApi } from '@/api/audit'
 import { activityApi } from '@/api/activity'
 import { SearchIcon } from 'tdesign-icons-vue-next'
+import { MessagePlugin } from 'tdesign-vue-next'
+import { getFileUrl } from '@/utils/file'
 
 const records = ref([])
 const loading = ref(false)
@@ -187,6 +203,43 @@ const formatDateTime = (str) => {
   return new Date(str).toLocaleString('zh-CN')
 }
 
+const normalizeAttachments = (attachments) => {
+  if (!attachments) return []
+  if (Array.isArray(attachments)) return attachments
+  if (typeof attachments === 'string') {
+    try {
+      const parsed = JSON.parse(attachments)
+      return Array.isArray(parsed) ? parsed : [attachments]
+    } catch (err) {
+      return attachments ? [attachments] : []
+    }
+  }
+  return [attachments]
+}
+
+const getAttachmentPath = (file) => {
+  if (!file) return ''
+  if (typeof file === 'string') return file
+  return file.url || file.path || file.filePath || file.relativeUrl || ''
+}
+
+const getAttachmentName = (file, index) => {
+  if (file && typeof file === 'object') {
+    return file.name || file.fileName || `附件${index + 1}`
+  }
+  const path = getAttachmentPath(file)
+  return path ? path.split('/').pop() : `附件${index + 1}`
+}
+
+const openAttachment = (file) => {
+  const path = getAttachmentPath(file)
+  if (!path) {
+    MessagePlugin.warning('附件链接无效')
+    return
+  }
+  window.open(getFileUrl(path), '_blank')
+}
+
 onMounted(() => {
   fetchData()
   fetchActivities()
@@ -202,6 +255,7 @@ onMounted(() => {
 .filter-select { width: 200px; flex-shrink: 0; }
 .filter-select-short { width: 140px; flex-shrink: 0; }
 .detail-content { max-height: 50vh; overflow-y: auto; }
+.attachment-list { display: flex; flex-direction: column; gap: 6px; }
 @media (max-width: 640px) {
   .filter-bar { flex-direction: column; }
   .filter-select, .filter-select-short { width: 100%; }

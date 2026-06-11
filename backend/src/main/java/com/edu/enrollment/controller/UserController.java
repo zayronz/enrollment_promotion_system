@@ -81,6 +81,12 @@ public class UserController {
         return ResultVO.success("密码重置成功，请使用新密码登录");
     }
 
+    @PostMapping("/identity-password-reset")
+    public ResultVO<?> identityPasswordReset(@Valid @RequestBody IdentityPasswordResetDTO dto) {
+        userService.resetPasswordByIdentityMock(dto);
+        return ResultVO.success("密码重置成功，请使用新密码登录");
+    }
+
     @PostMapping("/forgot-password/code")
     public ResultVO<?> sendForgotPasswordCode(@Valid @RequestBody ForgotPasswordCodeDTO dto) {
         userService.sendForgotPasswordCode(dto);

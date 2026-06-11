@@ -111,6 +111,20 @@
             <span class="detail-label">报名时间:</span>
             <span class="detail-value">{{ formatDateTime(currentRecord?.createTime) }}</span>
           </div>
+          <div class="detail-row attachments-row">
+            <span class="detail-label">报名附件:</span>
+            <div class="attachment-list">
+              <div
+                v-for="(file, index) in normalizeAttachments(currentRecord?.attachments)"
+                :key="index"
+                class="attachment-link"
+                @click="openAttachment(file)"
+              >
+                {{ getAttachmentName(file, index) }}
+              </div>
+              <span v-if="!normalizeAttachments(currentRecord?.attachments).length" class="detail-value">-</span>
+            </div>
+          </div>
 
           <div class="action-buttons">
             <t-button theme="success" block @click="doAudit('APPROVED')">通过</t-button>
@@ -129,6 +143,7 @@ import { auditApi } from '@/api/audit'
 import { activityApi } from '@/api/activity'
 import { MessagePlugin } from 'tdesign-vue-next'
 import H5NavBar from '../components/H5NavBar.vue'
+import { getFileUrl } from '@/utils/file'
 
 const records = ref([])
 const loading = ref(false)
@@ -143,6 +158,41 @@ const currentRecord = ref(null)
 const formatDateTime = (str) => {
   if (!str) return '-'
   return new Date(str).toLocaleString('zh-CN')
+}
+
+const normalizeAttachments = (attachments) => {
+  if (!attachments) return []
+  if (Array.isArray(attachments)) return attachments
+  if (typeof attachments === 'string') {
+    try {
+      const parsed = JSON.parse(attachments)
+      return Array.isArray(parsed) ? parsed : [attachments]
+    } catch (err) {
+      return attachments ? [attachments] : []
+    }
+  }
+  return [attachments]
+}
+
+const getAttachmentPath = (file) => {
+  if (!file) return ''
+  if (typeof file === 'string') return file
+  return file.url || file.path || file.filePath || file.relativeUrl || ''
+}
+
+const getAttachmentName = (file, index) => {
+  if (file && typeof file === 'object') return file.name || file.fileName || `附件${index + 1}`
+  const path = getAttachmentPath(file)
+  return path ? path.split('/').pop() : `附件${index + 1}`
+}
+
+const openAttachment = (file) => {
+  const path = getAttachmentPath(file)
+  if (!path) {
+    MessagePlugin.info('附件链接无效')
+    return
+  }
+  window.open(getFileUrl(path), '_blank')
 }
 
 const fetchData = async () => {
@@ -411,6 +461,22 @@ onMounted(() => {
 
 .detail-value {
   color: #1f2937;
+}
+
+.attachments-row {
+  align-items: flex-start;
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.attachment-link {
+  color: #2563eb;
+  word-break: break-all;
 }
 
 .action-buttons {

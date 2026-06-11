@@ -100,7 +100,7 @@ const loadMore = async () => {
 }
 
 const goDetail = (item) => {
-  router.push(`/school/activity/detail/${item.id}`)
+  router.push(`/h5/school-activity/${item.id}`)
 }
 
 onMounted(() => {

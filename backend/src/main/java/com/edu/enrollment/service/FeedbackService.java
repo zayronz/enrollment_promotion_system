@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -30,6 +31,11 @@ public class FeedbackService {
         RegistrationEntity registration = registrationMapper.findByActivityAndUser(dto.getActivityId(), userId);
         if (registration == null || registration.getStatus() != 1 && registration.getStatus() != 2) {
             throw new BusinessException("只有报名审批通过的用户才能提交反馈");
+        }
+
+        LocalDateTime feedbackDeadline = activityService.getFeedbackDeadline(dto.getActivityId());
+        if (feedbackDeadline != null && LocalDateTime.now().isAfter(feedbackDeadline)) {
+            throw new BusinessException("已过反馈时间，无法提交反馈");
         }
 
         UserEntity user = userService.getById(userId);

@@ -3,6 +3,7 @@ package com.edu.enrollment.vo;
 import cn.hutool.json.JSONArray;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -58,5 +59,12 @@ public class ActivityVO {
 
     private Integer showOnHome;  // 0-不展示 1-展示
 
-private List<Map<String, Object>> attachments;  // 附件列表
+    private BigDecimal minGpa;    // 学生最低绩点要求
+    private BigDecimal minScore;  // 学生最低成绩要求
+
+    private List<Long> allowedCollegeIds;     // 允许参与学院
+    private List<String> allowedUsernames;    // 指定允许参与用户（用户名或姓名）
+    private LocalDateTime feedbackDeadline;   // 反馈提交截止时间
+
+    private List<Map<String, Object>> attachments;  // 附件列表
 }

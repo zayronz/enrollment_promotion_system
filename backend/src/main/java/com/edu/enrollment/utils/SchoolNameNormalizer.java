@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -28,6 +29,13 @@ public class SchoolNameNormalizer {
             "大学", "学院", "职业技术学院", "专科学校", "中学", "高中"
     );
 
+    // 学生项目演示常用内置标准化词典，避免数据库词典为空时无法完成核心用例
+    private static final Map<String, List<String>> BUILTIN_ALIASES = Map.of(
+            "太原理工大学", List.of("太原理工", "太理", "太工大"),
+            "山西大学", List.of("山大"),
+            "中北大学", List.of("中北")
+    );
+
     /**
      * 标准化学校名称
      */
@@ -37,6 +45,12 @@ public class SchoolNameNormalizer {
         }
 
         String trimmed = inputName.trim();
+
+        // 0. 内置别名匹配
+        String builtinMatch = matchBuiltin(trimmed);
+        if (builtinMatch != null) {
+            return builtinMatch;
+        }
 
         // 1. 精确匹配
         SchoolDictEntity exactMatch = schoolDictMapper.selectOne(
@@ -79,6 +93,19 @@ public class SchoolNameNormalizer {
 
         String trimmed = keyword.trim();
         Set<String> suggestions = new LinkedHashSet<>();
+
+        for (Map.Entry<String, List<String>> entry : BUILTIN_ALIASES.entrySet()) {
+            if (suggestions.size() >= limit) {
+                break;
+            }
+            String standardName = entry.getKey();
+            boolean matched = standardName.contains(trimmed)
+                    || entry.getValue().stream().anyMatch(alias -> alias.contains(trimmed));
+            if (matched) {
+                suggestions.add(standardName);
+            }
+        }
+
         List<SchoolDictEntity> dicts = schoolDictMapper.selectList(null);
 
         for (SchoolDictEntity dict : dicts) {
@@ -100,6 +127,16 @@ public class SchoolNameNormalizer {
         }
 
         return new ArrayList<>(suggestions);
+    }
+
+    private String matchBuiltin(String input) {
+        for (Map.Entry<String, List<String>> entry : BUILTIN_ALIASES.entrySet()) {
+            String standardName = entry.getKey();
+            if (standardName.equals(input) || entry.getValue().contains(input)) {
+                return standardName;
+            }
+        }
+        return null;
     }
 
     private String fuzzyMatch(String input, List<SchoolDictEntity> dicts) {

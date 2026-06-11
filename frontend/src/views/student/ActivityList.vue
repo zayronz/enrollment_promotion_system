@@ -29,7 +29,7 @@
     <!-- Banner carousel -->
     <div v-if="banners.length > 0" class="banner-section">
       <t-swiper
-        :height="220"
+        :height="320"
         :interval="4000"
         :navigation="{ showSlideBtn: 'always' }"
       >
@@ -230,7 +230,8 @@ const offlineActivities = computed(() =>
 const fetchActivities = async () => {
   loading.value = true
   try {
-    const res = await activityApi.getOpenActivities()
+    // 学生端必须使用登录态接口，后端会按当前学生绩点/成绩自动过滤不可报名活动
+    const res = await activityApi.getActivityList({ page: 1, size: 1000 })
     let allActivities = res.data?.records || res.data || []
     
     // 前端筛选
@@ -249,10 +250,11 @@ const fetchActivities = async () => {
     const end = start + pageSize.value
     activities.value = allActivities.slice(start, end)
     total.value = allActivities.length
-    
-    // Fetch banners (使用已获取的公开活动数据)
+
+    // 首页轮播：只从当前学生可见活动中挑选管理员勾选了"首页展示"的活动
+    const bannerSource = allActivities.filter(a => Number(a.showOnHome) === 1)
     const bannerList = []
-    ;(res.data?.records || res.data || []).slice(0, 5).forEach(a => {
+    bannerSource.forEach(a => {
       if (a.bannerUrls && a.bannerUrls.length) {
         a.bannerUrls.forEach(url => {
           bannerList.push({
@@ -339,12 +341,15 @@ onMounted(fetchActivities)
 
 /* Banner */
 .banner-section {
+  width: 100%;
   margin-bottom: 32px;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 .banner-slide {
-  height: 220px;
+  width: 100%;
+  height: 320px;
   background-size: cover;
   background-position: center;
   cursor: pointer;
@@ -505,7 +510,7 @@ onMounted(fetchActivities)
     grid-template-columns: 1fr;
   }
   .banner-slide {
-    height: 160px;
+    height: 190px;
   }
 }
 </style>

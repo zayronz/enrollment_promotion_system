@@ -174,10 +174,11 @@ const loadMaterials = async () => {
         })
       })
     })
-    fileList.value = [...materialFiles, ...files, ...sampleFiles]
+    // 资料数据统一来自数据库和活动附件，PC 与 H5 共用同一批数据
+    fileList.value = [...materialFiles, ...files]
   } catch (error) {
     MessagePlugin.error('获取招宣资料失败')
-    fileList.value = sampleFiles
+    fileList.value = []
   } finally {
     loading.value = false
   }

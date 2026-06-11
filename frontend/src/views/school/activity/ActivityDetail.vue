@@ -228,8 +228,8 @@ onMounted(fetchDetail)
 
 .video-section .video-player { width: 100%; max-height: 400px; border-radius: 8px; }
 .desc-section .desc-content { line-height: 1.8; color: var(--td-text-color-secondary); }
-.banner-section .banner-swiper { border-radius: 8px; overflow: hidden; }
-.banner-section .banner-image { width: 100%; max-height: 300px; object-fit: cover; }
+.banner-section .banner-swiper { border-radius: 12px; overflow: hidden; }
+.banner-section .banner-image { width: 100%; height: 320px; object-fit: cover; display: block; border-radius: 12px; }
 
 .link-section { margin-bottom: 24px; }
 

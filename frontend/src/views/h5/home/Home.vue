@@ -330,7 +330,8 @@ const fetchActivities = async () => {
   if (!isStudent.value) return
   loading.value = true
   try {
-    const res = await activityApi.getOpenActivities()
+    // 学生移动端首页使用登录态接口，后端会自动过滤不符合资格条件的活动
+    const res = await activityApi.getActivityList({ page: 1, size: 1000 })
     activities.value = res.data?.records || res.data || []
   } catch (err) {
     console.error('获取活动列表失败', err)

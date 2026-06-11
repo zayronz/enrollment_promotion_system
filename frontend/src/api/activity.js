@@ -11,6 +11,11 @@ export const activityApi = {
         return request.get('/activity/open')
     },
 
+    // 获取首页轮播展示的活动（管理员勾选了首页展示的，已发布）
+    getBannerActivities() {
+        return request.get('/activity/banner')
+    },
+
     // 获取活动详情
     getActivityDetail(id) {
         return request.get(`/activity/${id}`)

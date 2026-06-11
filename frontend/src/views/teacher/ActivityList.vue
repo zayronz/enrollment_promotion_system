@@ -29,7 +29,7 @@
     <!-- Banner carousel -->
     <div v-if="banners.length > 0" class="banner-section">
       <t-swiper
-        :height="220"
+        :height="320"
         :interval="4000"
         :navigation="{ showSlideBtn: 'always' }"
       >
@@ -242,9 +242,9 @@ const fetchActivities = async () => {
     activities.value = res.data?.records || res.data || []
     total.value = res.data?.total || 0
 
-    const bannerRes = await activityApi.getActivityList({ page: 1, size: 5 })
+    const bannerRes = await activityApi.getBannerActivities()
     const bannerList = []
-    ;(bannerRes.data?.records || []).forEach(a => {
+    ;(bannerRes.data || []).forEach(a => {
       if (a.bannerUrls && a.bannerUrls.length) {
         a.bannerUrls.forEach(url => {
           bannerList.push({
@@ -316,8 +316,8 @@ onMounted(fetchActivities)
 .search-bar { display: flex; gap: 12px; margin-bottom: 24px; }
 .search-input { flex: 1; }
 .type-select { width: 160px; flex-shrink: 0; }
-.banner-section { margin-bottom: 32px; border-radius: 12px; overflow: hidden; }
-.banner-slide { height: 220px; background-size: cover; background-position: center; cursor: pointer; position: relative; background-color: #e8ecf1; }
+.banner-section { width: 100%; margin-bottom: 32px; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08); }
+.banner-slide { width: 100%; height: 320px; background-size: cover; background-position: center; cursor: pointer; position: relative; background-color: #e8ecf1; }
 .banner-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 24px 32px; background: linear-gradient(transparent, rgba(0,0,0,0.55)); color: #fff; }
 .banner-overlay h3 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
 .banner-overlay p { font-size: 13px; opacity: 0.85; }
@@ -346,6 +346,6 @@ onMounted(fetchActivities)
   .search-bar { flex-direction: column; }
   .type-select { width: 100%; }
   .card-grid { grid-template-columns: 1fr; }
-  .banner-slide { height: 160px; }
+  .banner-slide { height: 190px; }
 }
 </style>

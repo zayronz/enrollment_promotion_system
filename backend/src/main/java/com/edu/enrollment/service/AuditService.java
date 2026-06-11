@@ -1,5 +1,6 @@
 package com.edu.enrollment.service;
 
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.edu.enrollment.dto.AuditRequestDTO;
@@ -7,6 +8,7 @@ import com.edu.enrollment.entity.ActivityEntity;
 import com.edu.enrollment.entity.AuditRecordEntity;
 import com.edu.enrollment.entity.RegistrationEntity;
 import com.edu.enrollment.entity.UserEntity;
+import com.edu.enrollment.exception.BusinessException;
 import com.edu.enrollment.mapper.AuditRecordMapper;
 import com.edu.enrollment.mapper.RegistrationMapper;
 import lombok.RequiredArgsConstructor;
@@ -26,12 +28,13 @@ public class AuditService {
     private final AuditRecordMapper auditRecordMapper;
     private final ActivityService activityService;
     private final UserService userService;
+    private final RegistrationService registrationService;
 
     @Transactional
     public void audit(AuditRequestDTO dto, Long auditorId) {
         RegistrationEntity registration = registrationMapper.selectById(dto.getRegistrationId());
         if (registration == null) {
-            throw new RuntimeException("报名记录不存在");
+            throw new BusinessException("报名记录不存在");
         }
 
         ActivityEntity activity = activityService.getById(registration.getActivityId());
@@ -70,6 +73,10 @@ public class AuditService {
         }
 
         registrationMapper.updateById(registration);
+
+        if (dto.getPassed() && activity != null && activity.getAutoGroup() != null && activity.getAutoGroup() == 1) {
+            registrationService.autoGroup(registration.getActivityId(), registration.getTargetSchool());
+        }
     }
 
     private boolean hasNextNode(String currentNode, ActivityEntity activity) {
@@ -93,19 +100,21 @@ public class AuditService {
         List<RegistrationEntity> sameSchoolPassed = registrationMapper.findByActivityAndSchool(
                 registration.getActivityId(), registration.getTargetSchool());
         long passedCount = sameSchoolPassed.stream()
+                .filter(r -> !r.getId().equals(registration.getId()))
+                .filter(r -> r.getUserType() != null && r.getUserType().equals(registration.getUserType()))
                 .filter(r -> r.getStatus() == 1 || r.getStatus() == 2) // 学院通过或学校通过
                 .count();
 
         if (registration.getUserType() == 0) { // 学生
             if (activity.getMaxStudentPerSchool() != null
                     && passedCount >= activity.getMaxStudentPerSchool()) {
-                throw new RuntimeException("该学校学生名额已满（上限："
+                throw new BusinessException("该高中名额已满，无法通过（学生上限："
                         + activity.getMaxStudentPerSchool() + "人）");
             }
         } else { // 教师
             if (activity.getMaxTeacherPerSchool() != null
                     && passedCount >= activity.getMaxTeacherPerSchool()) {
-                throw new RuntimeException("该学校教师名额已满（上限："
+                throw new BusinessException("该高中名额已满，无法通过（教师上限："
                         + activity.getMaxTeacherPerSchool() + "人）");
             }
         }
@@ -165,6 +174,8 @@ public class AuditService {
                     if (registration != null) {
                         map.put("targetSchool", registration.getTargetSchool());
                         map.put("score", registration.getScore());
+                        map.put("attachments", extractAttachments(registration));
+                        map.put("formData", parseFormData(registration));
 
                         // 获取活动信息
                         ActivityEntity activity = activityService.getById(registration.getActivityId());
@@ -221,5 +232,18 @@ public class AuditService {
         pageResult.put("current", page);
         pageResult.put("size", size);
         return pageResult;
+    }
+
+    private Map<String, Object> parseFormData(RegistrationEntity registration) {
+        Map<String, Object> formData = new HashMap<>();
+        if (registration.getFormData() != null && !registration.getFormData().isBlank()) {
+            formData.putAll(JSONUtil.parseObj(registration.getFormData()));
+        }
+        return formData;
+    }
+
+    private Object extractAttachments(RegistrationEntity registration) {
+        Map<String, Object> formData = parseFormData(registration);
+        return formData.getOrDefault("attachments", List.of());
     }
 }

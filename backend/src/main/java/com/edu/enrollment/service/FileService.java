@@ -1,6 +1,7 @@
 package com.edu.enrollment.service;
 
 import com.edu.enrollment.entity.AttachmentEntity;
+import com.edu.enrollment.exception.BusinessException;
 import com.edu.enrollment.mapper.AttachmentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +16,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 import javax.servlet.http.HttpServletResponse;
@@ -33,6 +36,12 @@ public class FileService {
     private final AttachmentMapper attachmentMapper;
 
     public String upload(MultipartFile file, Long relatedId, String relatedType, Long uploaderId) throws IOException {
+        return upload(file, relatedId, relatedType, null, uploaderId);
+    }
+
+    public String upload(MultipartFile file, Long relatedId, String relatedType, String bizType, Long uploaderId) throws IOException {
+        validateFile(file, bizType);
+
         // 创建目录
         String dateDir = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         File destDir = new File(uploadPath + dateDir);
@@ -42,7 +51,7 @@ public class FileService {
 
         // 生成文件名
         String originalName = file.getOriginalFilename();
-        String ext = originalName.substring(originalName.lastIndexOf("."));
+        String ext = getExtension(originalName);
         String newFileName = UUID.randomUUID().toString() + ext;
 
         // 保存文件
@@ -62,6 +71,27 @@ public class FileService {
         attachmentMapper.insert(attachment);
 
         return relativePath;
+    }
+
+    private void validateFile(MultipartFile file, String bizType) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("上传文件不能为空");
+        }
+
+        if ("registrationAttachment".equals(bizType)) {
+            String ext = getExtension(file.getOriginalFilename()).toLowerCase(Locale.ROOT);
+            Set<String> allowed = Set.of(".pdf", ".doc", ".docx", ".xls", ".xlsx");
+            if (!allowed.contains(ext)) {
+                throw new BusinessException("不支持该文件类型，请上传PDF/Word/Excel");
+            }
+        }
+    }
+
+    private String getExtension(String fileName) {
+        if (fileName == null || !fileName.contains(".")) {
+            return "";
+        }
+        return fileName.substring(fileName.lastIndexOf("."));
     }
 
     /**

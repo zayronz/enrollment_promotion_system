@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -48,4 +49,16 @@ public class ActivityDTO {
     private Integer maxStudentPerSchool;
     private Integer maxTeacherPerSchool;
     private Boolean autoGroup;
+
+    // 学生端资格可见性条件：低于要求的学生不显示该活动
+    private BigDecimal minGpa;
+    private BigDecimal minScore;
+
+    // 参与人群规则：为空表示不限制
+    private List<Long> allowedCollegeIds;
+    private List<String> allowedUsernames;
+
+    // 反馈提交截止时间：超过后不可提交反馈
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime feedbackDeadline;
 }

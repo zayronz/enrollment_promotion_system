@@ -63,6 +63,14 @@
             <span class="info-label">所属学院</span>
             <span class="info-value">{{ userStore.collegeName }}</span>
           </div>
+          <div class="info-row" v-if="isStudent">
+            <span class="info-label">年级</span>
+            <span class="info-value" :class="{ empty: !studentGradeText }">{{ studentGradeText || '未设置' }}</span>
+          </div>
+          <div class="info-row" v-if="isStudent">
+            <span class="info-label">绩点</span>
+            <span class="info-value" :class="{ empty: !studentGpaText }">{{ studentGpaText || '未设置' }}</span>
+          </div>
         </div>
       </div>
 
@@ -220,6 +228,18 @@ const roleLabel = computed(() => {
 const roleTheme = computed(() => {
   const map = { STUDENT: 'primary', TEACHER: 'warning', COLLEGE: 'success', SCHOOL: 'danger' }
   return map[userStore.role] || 'default'
+})
+
+const isStudent = computed(() => userStore.role === 'STUDENT')
+
+const studentGradeText = computed(() => {
+  const grade = userStore.userInfo?.grade
+  return grade === null || grade === undefined || grade === '' ? '' : String(grade)
+})
+
+const studentGpaText = computed(() => {
+  const gpa = userStore.userInfo?.gpa
+  return gpa === null || gpa === undefined || gpa === '' ? '' : Number(gpa).toFixed(2)
 })
 
 const resetForm = () => {

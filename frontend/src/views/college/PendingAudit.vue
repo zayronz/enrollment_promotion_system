@@ -72,7 +72,7 @@
     <t-dialog
       v-model:visible="dialogVisible"
       header="报名详情"
-      width="560px"
+      width="680px"
       :confirm-btn="{ content: '通过', theme: 'success' }"
       :cancel-btn="{ content: '拒绝', theme: 'danger', variant: 'outline' }"
       @confirm="doAudit('APPROVED')"
@@ -89,6 +89,20 @@
           <t-descriptions-item label="目标学校">{{ currentRecord.targetSchool || '-' }}</t-descriptions-item>
           <t-descriptions-item label="成绩/GPA">{{ currentRecord.score || '-' }}</t-descriptions-item>
           <t-descriptions-item label="报名时间">{{ formatDateTime(currentRecord.createTime) }}</t-descriptions-item>
+          <t-descriptions-item label="报名附件">
+            <div v-if="normalizeAttachments(currentRecord.attachments).length" class="attachment-list">
+              <t-link
+                v-for="(file, index) in normalizeAttachments(currentRecord.attachments)"
+                :key="index"
+                theme="primary"
+                hover="color"
+                @click="openAttachment(file)"
+              >
+                {{ getAttachmentName(file, index) }}
+              </t-link>
+            </div>
+            <span v-else>-</span>
+          </t-descriptions-item>
         </t-descriptions>
         <t-form class="audit-form">
           <t-form-item label="审核意见">
@@ -107,6 +121,7 @@ import { auditApi } from '@/api/audit'
 import { activityApi } from '@/api/activity'
 import { SearchIcon, CheckCircleIcon, CloseCircleIcon } from 'tdesign-icons-vue-next'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
+import { getFileUrl } from '@/utils/file'
 
 const records = ref([])
 const loading = ref(false)
@@ -240,6 +255,43 @@ const formatDateTime = (str) => {
   return new Date(str).toLocaleString('zh-CN')
 }
 
+const normalizeAttachments = (attachments) => {
+  if (!attachments) return []
+  if (Array.isArray(attachments)) return attachments
+  if (typeof attachments === 'string') {
+    try {
+      const parsed = JSON.parse(attachments)
+      return Array.isArray(parsed) ? parsed : [attachments]
+    } catch (err) {
+      return attachments ? [attachments] : []
+    }
+  }
+  return [attachments]
+}
+
+const getAttachmentPath = (file) => {
+  if (!file) return ''
+  if (typeof file === 'string') return file
+  return file.url || file.path || file.filePath || file.relativeUrl || ''
+}
+
+const getAttachmentName = (file, index) => {
+  if (file && typeof file === 'object') {
+    return file.name || file.fileName || `附件${index + 1}`
+  }
+  const path = getAttachmentPath(file)
+  return path ? path.split('/').pop() : `附件${index + 1}`
+}
+
+const openAttachment = (file) => {
+  const path = getAttachmentPath(file)
+  if (!path) {
+    MessagePlugin.warning('附件链接无效')
+    return
+  }
+  window.open(getFileUrl(path), '_blank')
+}
+
 onMounted(() => {
   fetchData()
   fetchActivities()
@@ -277,6 +329,11 @@ onMounted(() => {
 .detail-content {
   max-height: 50vh;
   overflow-y: auto;
+}
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .audit-form {
   margin-top: 16px;

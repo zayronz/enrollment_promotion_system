@@ -94,7 +94,12 @@
             <t-link theme="default" hover="color" @click="$router.push('/forgot-password')">忘记密码</t-link>
           </div>
 
-
+          <div class="sso-box">
+            <t-button block variant="outline" theme="primary" @click="handleSsoMock">
+              统一身份认证登录（模拟）
+            </t-button>
+            <p>演示 LOG-05：真实部署时由学校统一认证平台携带票据自动登录；本项目用学生测试账号模拟单点登录。</p>
+          </div>
 
           <!-- 测试账号 -->
           <div class="test-accounts" :class="{ open: showTestAccounts }">
@@ -127,13 +132,14 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
 import { BookOpenIcon, UserIcon, LockOnIcon } from 'tdesign-icons-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 
 const formRef = ref(null)
@@ -169,6 +175,11 @@ const quickLogin = (username, password) => {
   handleLogin()
 }
 
+const handleSsoMock = () => {
+  MessagePlugin.info('正在模拟统一身份认证票据校验')
+  quickLogin('student', '123456')
+}
+
 const handleLogin = async (e) => {
   if (e && e.preventDefault) e.preventDefault()
 
@@ -192,6 +203,12 @@ const handleLogin = async (e) => {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  if (route.query.sso === 'student') {
+    handleSsoMock()
+  }
+})
 </script>
 
 <style scoped>
@@ -397,6 +414,21 @@ const handleLogin = async (e) => {
 }
 .link-divider {
   color: #e5e6eb;
+}
+
+.sso-box {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px dashed #c9d9ff;
+  border-radius: 10px;
+  background: #f7faff;
+}
+
+.sso-box p {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 /* H5 入口样式 */

@@ -55,6 +55,12 @@ public class RegistrationController {
         return ResultVO.success(registrationService.getAvailableTeams(userId));
     }
 
+    @GetMapping("/activity/{activityId}/groups")
+    @PreAuthorize("hasAnyRole('COLLEGE', 'SCHOOL')")
+    public ResultVO<?> activityGroups(@PathVariable Long activityId) {
+        return ResultVO.success(registrationService.getActivityGroups(activityId));
+    }
+
     @GetMapping("/{id}")
     public ResultVO<?> detail(@PathVariable Long id) {
         return ResultVO.success(registrationService.getDetail(id));

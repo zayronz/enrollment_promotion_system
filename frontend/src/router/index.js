@@ -16,6 +16,12 @@ const routes = [
         meta: { requiresAuth: false }
     },
     {
+        path: '/identity/password-reset',
+        name: 'IdentityPasswordResetMock',
+        component: () => import('@/views/login/IdentityPasswordResetMock.vue'),
+        meta: { requiresAuth: false }
+    },
+    {
         path: '/register',
         name: 'Register',
         component: () => import('@/views/register/Register.vue'),
@@ -32,10 +38,10 @@ const routes = [
             { path: 'student/register/:id', name: 'RegistrationForm', component: () => import('@/views/student/RegistrationForm.vue') },
             { path: 'student/my-registrations', name: 'MyRegistrations', component: () => import('@/views/student/MyRegistrations.vue') },
             { path: 'student/feedbacks', name: 'StudentFeedbacks', component: () => import('@/views/student/MyFeedbacks.vue') },
-            { path: 'student/test', name: 'StudentTestList', component: () => import('@/views/h5/test/TestList.vue') },
-            { path: 'student/test/start/:id', name: 'StudentTestStart', component: () => import('@/views/h5/test/TestStart.vue') },
-            { path: 'student/test/questions/:id', name: 'StudentTestQuestions', component: () => import('@/views/h5/test/TestQuestions.vue') },
-            { path: 'student/test/result/:id', name: 'StudentTestResult', component: () => import('@/views/h5/test/TestResult.vue') },
+            { path: 'student/test', name: 'StudentTestList', component: () => import('@/views/common/test/TestList.vue') },
+            { path: 'student/test/start/:id', name: 'StudentTestStart', component: () => import('@/views/common/test/TestStart.vue') },
+            { path: 'student/test/questions/:id', name: 'StudentTestQuestions', component: () => import('@/views/common/test/TestQuestions.vue') },
+            { path: 'student/test/result/:id', name: 'StudentTestResult', component: () => import('@/views/common/test/TestResult.vue') },
             { path: 'student/my-activity', name: 'StudentMyActivity', component: () => import('@/views/h5/myActivity/MyActivity.vue') },
             { path: 'student/my-activity/:id', name: 'StudentMyActivityDetail', component: () => import('@/views/h5/myActivity/MyActivityDetail.vue') },
             { path: 'student/team', name: 'StudentTeam', component: () => import('@/views/h5/team/MyTeam.vue') },
@@ -53,10 +59,10 @@ const routes = [
             { path: 'register/:id', name: 'TeacherRegistrationForm', component: () => import('@/views/teacher/RegistrationForm.vue') },
             { path: 'my-registrations', name: 'TeacherMyRegistrations', component: () => import('@/views/teacher/MyRegistrations.vue') },
             { path: 'feedbacks', name: 'TeacherFeedbacks', component: () => import('@/views/student/MyFeedbacks.vue') },
-            { path: 'test', name: 'TeacherTestList', component: () => import('@/views/h5/test/TestList.vue') },
-            { path: 'test/start/:id', name: 'TeacherTestStart', component: () => import('@/views/h5/test/TestStart.vue') },
-            { path: 'test/questions/:id', name: 'TeacherTestQuestions', component: () => import('@/views/h5/test/TestQuestions.vue') },
-            { path: 'test/result/:id', name: 'TeacherTestResult', component: () => import('@/views/h5/test/TestResult.vue') },
+            { path: 'test', name: 'TeacherTestList', component: () => import('@/views/common/test/TestList.vue') },
+            { path: 'test/start/:id', name: 'TeacherTestStart', component: () => import('@/views/common/test/TestStart.vue') },
+            { path: 'test/questions/:id', name: 'TeacherTestQuestions', component: () => import('@/views/common/test/TestQuestions.vue') },
+            { path: 'test/result/:id', name: 'TeacherTestResult', component: () => import('@/views/common/test/TestResult.vue') },
             { path: 'my-activity', name: 'TeacherMyActivity', component: () => import('@/views/h5/myActivity/MyActivity.vue') },
             { path: 'my-activity/:id', name: 'TeacherMyActivityDetail', component: () => import('@/views/h5/myActivity/MyActivityDetail.vue') },
             { path: 'team', name: 'TeacherTeam', component: () => import('@/views/h5/team/MyTeam.vue') },
@@ -235,7 +241,11 @@ const toMobilePath = (path) => {
     if (path.startsWith('/student/test/start/')) return path.replace('/student/test/start/', '/h5/test/start/')
     if (path.startsWith('/student/test/questions/')) return path.replace('/student/test/questions/', '/h5/test/questions/')
     if (path.startsWith('/student/test/result/')) return path.replace('/student/test/result/', '/h5/test/result/')
+    if (path.startsWith('/teacher/test/start/')) return path.replace('/teacher/test/start/', '/h5/test/start/')
+    if (path.startsWith('/teacher/test/questions/')) return path.replace('/teacher/test/questions/', '/h5/test/questions/')
+    if (path.startsWith('/teacher/test/result/')) return path.replace('/teacher/test/result/', '/h5/test/result/')
     if (path.startsWith('/student/my-activity/')) return path.replace('/student/my-activity/', '/h5/my-activity/')
+    if (path.startsWith('/teacher/my-activity/')) return path.replace('/teacher/my-activity/', '/h5/my-activity/')
     return null
 }
 
@@ -247,22 +257,21 @@ router.beforeEach(async (to, from, next) => {
 
     // 判断是否为 H5 页面
     const isH5Page = to.path.startsWith('/h5')
-    
-    // 判断是否为移动端设备
-    const deviceIsMobile = isMobile()
 
-    // 如果访问PC登录页且是移动端设备，自动重定向到H5登录页
+    // 移动端访问 PC 登录页时，自动进入 H5 登录页
+    const deviceIsMobile = isMobile()
     if (to.path === '/login' && deviceIsMobile && !userStore.isLoggedIn) {
         next('/h5/login')
         return
     }
 
     if (requiresAuth && !userStore.isLoggedIn) {
-        // H5 页面未登录跳转到 H5 登录页
+        // 当前访问 H5 就回到 H5 登录页；PC 路由在移动端会回到 H5 登录页
         next(isH5Page ? '/h5/login' : '/login')
         return
     }
 
+    // 移动端访问 PC 路由时，自动映射到对应 H5 路由
     if (userStore.isLoggedIn && deviceIsMobile && !isH5Page) {
         const mobilePath = toMobilePath(to.path)
         if (mobilePath) {
@@ -272,8 +281,8 @@ router.beforeEach(async (to, from, next) => {
     }
 
     if (requiredRole && userStore.role !== requiredRole) {
-        // 根据角色重定向
-        next(roleHome(userStore.role, deviceIsMobile))
+        // 根据当前设备和访问端重定向到对应角色首页
+        next(roleHome(userStore.role, deviceIsMobile || isH5Page))
         return
     }
 

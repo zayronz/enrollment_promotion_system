@@ -47,7 +47,8 @@ const loading = ref(true)
 const fetchActivities = async () => {
   loading.value = true
   try {
-    const res = await activityApi.getOpenActivities()
+    // 教师端使用登录态活动列表，确保与 PC 端一致应用参与人群规则
+    const res = await activityApi.getActivityList({ page: 1, size: 1000 })
     records.value = res.data?.records || res.data || []
   } catch (err) {
     console.error('获取活动列表失败', err)

@@ -57,7 +57,13 @@
       </t-form-item>
 
       <t-form-item label="轮播图">
-        <FileUploader v-model="form.bannerImages" :multiple="false" accept="image/*" tip-text="支持上传一张Banner图片" />
+        <FileUploader
+          v-model="form.bannerImages"
+          :multiple="false"
+          accept="image/*"
+          :crop="true"
+          tip-text="建议上传横向图片；上传时可裁剪选择 16:9 轮播显示范围"
+        />
       </t-form-item>
 
       <t-form-item label="宣传视频">
@@ -66,6 +72,29 @@
 
       <!-- 报名设置 -->
       <t-divider align="left">报名设置</t-divider>
+
+      <t-form-item label="资格条件">
+        <t-space>
+          <t-input-number
+            v-model="form.minGpa"
+            :min="0"
+            :max="5"
+            :step="0.1"
+            :decimal-places="2"
+            placeholder="最低绩点"
+            style="width: 180px"
+          />
+          <t-input-number
+            v-model="form.minScore"
+            :min="0"
+            :step="1"
+            :decimal-places="2"
+            placeholder="最低成绩"
+            style="width: 180px"
+          />
+        </t-space>
+        <div class="tip">学生登录后，低于设置要求的活动将不会显示；不填写表示不限制。</div>
+      </t-form-item>
 
       <t-form-item label="自定义字段">
         <div class="custom-fields">
@@ -104,6 +133,45 @@
         <span class="tip">开启后，系统将按目标学校自动分组并排名</span>
       </t-form-item>
 
+      <t-form-item label="参与人群">
+        <t-select
+          v-model="form.allowedCollegeIds"
+          multiple
+          clearable
+          filterable
+          placeholder="选择允许参与的学院，不选则不限制学院"
+          style="width: 420px"
+        >
+          <t-option
+            v-for="item in collegeOptions"
+            :key="item.value"
+            :value="item.value"
+            :label="item.label"
+          />
+        </t-select>
+        <div class="tip">可用于测试“仅允许信息学院学生和指定老师参加”。</div>
+      </t-form-item>
+
+      <t-form-item label="指定用户">
+        <t-input
+          v-model="form.allowedUsernamesText"
+          placeholder="输入用户名或姓名，多个用逗号分隔，例如：teacher01,张三"
+          style="width: 420px"
+          clearable
+        />
+      </t-form-item>
+
+      <t-form-item label="反馈截止">
+        <t-date-picker
+          v-model="form.feedbackDeadline"
+          enable-time-picker
+          clearable
+          format="YYYY-MM-DD HH:mm:ss"
+          placeholder="超过该时间后不可提交反馈"
+          style="width: 260px"
+        />
+      </t-form-item>
+
       <!-- 审批流程 -->
       <t-divider align="left">审批流程</t-divider>
 
@@ -139,6 +207,7 @@ import { activityApi } from '@/api/activity'
 import { DeleteIcon, AddIcon } from 'tdesign-icons-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
 import FileUploader from '@/components/business/FileUploader.vue'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -147,6 +216,7 @@ const submitting = ref(false)
 const publishing = ref(false)
 const isCreate = ref(false)
 const formRef = ref(null)
+const collegeOptions = ref([])
 
 const form = reactive({
   name: '',
@@ -159,9 +229,14 @@ const form = reactive({
   bannerImages: '',
   videoUrl: '',
   customFields: [],
+  minGpa: null,
+  minScore: null,
   maxStudentPerSchool: 10,
   maxTeacherPerSchool: 5,
   autoGroup: true,
+  allowedCollegeIds: [],
+  allowedUsernamesText: '',
+  feedbackDeadline: null,
   auditFlow: ['college_audit', 'school_audit'],
   status: 'DRAFT'
 })
@@ -226,6 +301,11 @@ const loadActivity = async () => {
       ...f,
       optionsStr: Array.isArray(f.options) ? f.options.join(',') : (f.options || '')
     }))
+    form.minGpa = data.minGpa ?? null
+    form.minScore = data.minScore ?? null
+    form.allowedCollegeIds = data.allowedCollegeIds || []
+    form.allowedUsernamesText = (data.allowedUsernames || []).join(',')
+    form.feedbackDeadline = data.feedbackDeadline || null
     
     form.maxStudentPerSchool = data.maxStudentPerSchool !== undefined && data.maxStudentPerSchool !== null ? data.maxStudentPerSchool : 10
     form.maxTeacherPerSchool = data.maxTeacherPerSchool !== undefined && data.maxTeacherPerSchool !== null ? data.maxTeacherPerSchool : 5
@@ -288,9 +368,16 @@ const buildSubmitData = () => {
       ...f,
       options: f.optionsStr ? f.optionsStr.split(',') : []
     })),
+    minGpa: form.minGpa === '' ? null : form.minGpa,
+    minScore: form.minScore === '' ? null : form.minScore,
     maxStudentPerSchool: form.maxStudentPerSchool,
     maxTeacherPerSchool: form.maxTeacherPerSchool,
     autoGroup: form.autoGroup,
+    allowedCollegeIds: form.allowedCollegeIds,
+    allowedUsernames: form.allowedUsernamesText
+      ? form.allowedUsernamesText.split(/[,，]/).map(item => item.trim()).filter(Boolean)
+      : [],
+    feedbackDeadline: form.feedbackDeadline ? formatDateTime(form.feedbackDeadline) : null,
     auditFlow: form.auditFlow,
     status: form.status
   }
@@ -339,7 +426,22 @@ const goBack = () => {
   router.back()
 }
 
-onMounted(loadActivity)
+const fetchColleges = async () => {
+  try {
+    const res = await request.get('/college/list')
+    collegeOptions.value = (res.data || []).map(item => ({
+      value: item.id,
+      label: item.name
+    }))
+  } catch (err) {
+    console.error('获取学院列表失败', err)
+  }
+}
+
+onMounted(() => {
+  fetchColleges()
+  loadActivity()
+})
 </script>
 
 <style scoped>

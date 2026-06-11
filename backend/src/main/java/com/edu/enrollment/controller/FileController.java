@@ -29,8 +29,9 @@ public class FileController {
     public ResultVO<String> upload(@RequestParam("file") MultipartFile file,
                                    @RequestParam(required = false) Long relatedId,
                                    @RequestParam(required = false) String relatedType,
+                                   @RequestParam(required = false) String bizType,
                                    @CurrentUserId Long userId) throws IOException {
-        String path = fileService.upload(file, relatedId, relatedType, userId);
+        String path = fileService.upload(file, relatedId, relatedType, bizType, userId);
         return ResultVO.success(path);
     }
 

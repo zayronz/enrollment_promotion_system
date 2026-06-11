@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.edu.enrollment.dto.ForgotPasswordCodeDTO;
 import com.edu.enrollment.dto.ForgotPasswordDTO;
 import com.edu.enrollment.dto.ForgotPasswordVerifyDTO;
+import com.edu.enrollment.dto.IdentityPasswordResetDTO;
 import com.edu.enrollment.dto.PasswordChangeDTO;
 import com.edu.enrollment.dto.UserDTO;
 import com.edu.enrollment.dto.UserRegisterDTO;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -101,10 +103,7 @@ public class UserService {
         vo.setCreateTime(user.getCreateTime());
         // 查询学院名称
         if (user.getCollegeId() != null) {
-            CollegeEntity college = collegeMapper.selectById(user.getCollegeId());
-            if (college != null) {
-                vo.setCollegeName(college.getName());
-            }
+            vo.setCollegeName(resolveCollegeName(user.getCollegeId()));
         }
         return vo;
     }
@@ -128,7 +127,7 @@ public class UserService {
         return userMapper.selectList(wrapper);
     }
 
-    public Page<UserEntity> getUserList(Integer page, Integer size, String role, String keyword) {
+    public Page<UserVO> getUserList(Integer page, Integer size, String role, String keyword) {
         LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
         if (role != null && !role.isEmpty()) {
             wrapper.eq(UserEntity::getRole, role);
@@ -139,7 +138,51 @@ public class UserService {
                     .like(UserEntity::getUsername, keyword);
         }
         wrapper.orderByDesc(UserEntity::getCreateTime);
-        return userMapper.selectPage(new Page<>(page, size), wrapper);
+
+        Page<UserEntity> entityPage = userMapper.selectPage(new Page<>(page, size), wrapper);
+        Page<UserVO> voPage = new Page<>();
+        voPage.setCurrent(entityPage.getCurrent());
+        voPage.setSize(entityPage.getSize());
+        voPage.setTotal(entityPage.getTotal());
+        voPage.setRecords(entityPage.getRecords().stream()
+                .map(this::toUserVO)
+                .collect(Collectors.toList()));
+        return voPage;
+    }
+
+    private UserVO toUserVO(UserEntity user) {
+        UserVO vo = new UserVO();
+        vo.setId(user.getId());
+        vo.setUsername(user.getUsername());
+        vo.setRealName(user.getRealName());
+        vo.setEmail(user.getEmail());
+        vo.setPhone(user.getPhone());
+        vo.setRole(user.getRole());
+        vo.setCollegeId(user.getCollegeId());
+        vo.setGrade(user.getGrade());
+        vo.setGpa(user.getGpa());
+        vo.setStatus(user.getStatus());
+        vo.setAvatar(user.getAvatar());
+        vo.setCreateTime(user.getCreateTime());
+
+        if (user.getCollegeId() != null) {
+            vo.setCollegeName(resolveCollegeName(user.getCollegeId()));
+        }
+        return vo;
+    }
+
+    private String resolveCollegeName(Long collegeId) {
+        CollegeEntity college = collegeMapper.selectById(collegeId);
+        if (college != null) {
+            return college.getName();
+        }
+
+        // 兼容历史数据：部分旧数据的 collegeId 可能保存的是学院管理员用户ID
+        UserEntity collegeUser = userMapper.selectById(collegeId);
+        if (collegeUser != null) {
+            return collegeUser.getRealName();
+        }
+        return null;
     }
 
     public void createUser(UserDTO dto) {
@@ -234,11 +277,19 @@ public class UserService {
         if (dto.getGrade() != null) {
             user.setGrade(dto.getGrade());
         }
+        if (dto.getGpa() != null) {
+            user.setGpa(dto.getGpa());
+        }
         if (dto.getStatus() != null) {
             user.setStatus(dto.getStatus());
         }
 
         userMapper.updateById(user);
+
+        // 显式更新学生学业信息，避免通用更新策略或字段类型转换导致绩点未持久化
+        if ("STUDENT".equals(user.getRole()) && (dto.getGrade() != null || dto.getGpa() != null)) {
+            userMapper.updateStudentAcademic(user.getId(), user.getGrade(), user.getGpa());
+        }
     }
 
     @Transactional
@@ -318,6 +369,31 @@ public class UserService {
         validateResetCode(dto.getUsername(), dto.getEmail(), dto.getCode(), true);
 
         user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+        userMapper.updateById(user);
+    }
+
+    /**
+     * 本地演示用：模拟统一身份认证平台根据注册邮箱或手机号重置密码。
+     * 正式部署时应跳转学校统一身份认证平台，由认证平台完成密码找回。
+     */
+    @Transactional
+    public void resetPasswordByIdentityMock(IdentityPasswordResetDTO dto) {
+        String account = dto.getAccount() == null ? "" : dto.getAccount().trim();
+        String newPassword = dto.getNewPassword() == null ? "" : dto.getNewPassword();
+
+        if (newPassword.length() < 6) {
+            throw new BusinessException("新密码长度不能少于6位");
+        }
+
+        UserEntity user = userMapper.findByEmailOrPhone(account);
+        if (user == null) {
+            throw new BusinessException("未找到绑定该邮箱或手机号的账号");
+        }
+        if (user.getStatus() != 1) {
+            throw new BusinessException("该账号已被禁用，无法重置密码");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
         userMapper.updateById(user);
     }
 
