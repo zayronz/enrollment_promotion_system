@@ -2,37 +2,62 @@
   <div class="h5-college-feedback">
     <H5NavBar title="反馈管理" />
 
-    <t-loading v-if="loading" text="加载中..." size="small" class="loading-wrap" />
+    <div v-if="loading" class="loading-wrap">
+      <svg class="spinner" width="32" height="32" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" stroke="#2563eb" stroke-width="3" fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"></circle>
+      </svg>
+      <div class="loading-text">加载中...</div>
+    </div>
 
     <div v-else class="content-wrap">
       <!-- 搜索 & 筛选 -->
       <div class="filter-bar">
         <div class="search-row">
-          <t-input
-            v-model="keyword"
-            placeholder="搜索反馈标题或内容..."
-            clearable
-            @keyup.enter.native="handleSearch"
-            @clear="handleSearch"
-          />
+          <div class="search-input-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              v-model="keyword"
+              placeholder="搜索反馈标题或内容"
+              @keyup.enter="handleSearch"
+              @input="debouncedSearch"
+            />
+            <span v-if="keyword" class="clear-btn" @click="clearSearch">×</span>
+          </div>
           <button class="search-btn" @click="handleSearch">搜索</button>
         </div>
-        <div class="filter-row">
-          <t-select
-            v-model="activityFilter"
-            placeholder="按活动筛选"
-            clearable
-            @change="handleSearch"
-            @clear="handleSearch"
+
+        <!-- 活动筛选 -->
+        <div class="activity-filter">
+          <div
+            class="filter-chip"
+            :class="{ active: !activityFilter }"
+            @click="setActivityFilter(null)"
           >
-            <t-option
-              v-for="opt in activityOptions"
-              :key="opt.value"
-              :value="opt.value"
-              :label="opt.label"
-            />
-          </t-select>
+            全部
+          </div>
+          <div
+            v-for="opt in activityOptions.slice(0, 8)"
+            :key="opt.value"
+            class="filter-chip"
+            :class="{ active: String(activityFilter) === String(opt.value) }"
+            @click="setActivityFilter(opt.value)"
+          >
+            {{ truncate(opt.label, 10) }}
+          </div>
+          <div v-if="activityOptions.length > 8" class="filter-chip more-chip">
+            +{{ activityOptions.length - 8 }}
+          </div>
         </div>
+      </div>
+
+      <!-- 统计信息 -->
+      <div class="stats-bar">
+        <span>共 {{ viewList.length }} 条反馈</span>
+        <span v-if="studentCount > 0" class="stat-item">学生 {{ studentCount }}</span>
+        <span v-if="teacherCount > 0" class="stat-item">教师 {{ teacherCount }}</span>
       </div>
 
       <!-- 反馈列表 -->
@@ -41,111 +66,57 @@
           v-for="item in viewList"
           :key="item.id"
           class="feedback-item"
-          @click="showDetail(item)"
+          @click="goDetail(item)"
         >
           <div class="item-header">
-            <t-tag
-              :theme="item.userRole === 'STUDENT' ? 'primary' : 'warning'"
-              variant="light"
-              size="small"
+            <span
+              class="role-tag"
+              :class="item.userRole === 'STUDENT' ? 'role-student' : 'role-teacher'"
             >
               {{ item.userRole === 'STUDENT' ? '学生' : '教师' }}
-            </t-tag>
+            </span>
             <span class="item-realname">{{ item.realName || '匿名' }}</span>
             <span class="item-time">{{ formatDateTime(item.createTime) }}</span>
           </div>
+
           <div class="item-title">{{ item.title || '反馈' }}</div>
+
           <div class="item-activity">
             <span class="activity-label">活动：</span>{{ item.activityTitle || '-' }}
           </div>
+
           <div class="item-content">
-            {{ (item.content || '').substring(0, 80) }}{{ (item.content || '').length > 80 ? '...' : '' }}
+            {{ truncate(item.content, 100) }}
           </div>
+
           <div v-if="attachmentsOf(item).length > 0" class="item-attachments">
             <span class="attachment-icon">📎</span>
             <span>{{ attachmentsOf(item).length }} 个附件</span>
+          </div>
+
+          <div class="item-footer">
+            <span class="view-detail">查看详情 →</span>
           </div>
         </div>
       </div>
 
       <div v-else class="empty-wrap">
-        <div class="empty-text">暂无反馈记录</div>
-      </div>
-    </div>
-
-    <!-- 详情覆盖层（自定义全屏弹层） -->
-    <div v-if="detailVisible && currentRecord" class="detail-overlay" @click.self="closeDetailDialog">
-      <div class="detail-panel">
-        <div class="detail-header">
-          <div class="detail-title">反馈详情</div>
-          <button class="close-btn" @click.stop="closeDetailDialog">关闭</button>
-        </div>
-
-        <div class="detail-body">
-          <div class="info-section">
-            <div class="info-item">
-              <span class="info-key">提交人</span>
-              <span class="info-val">{{ currentRecord.realName || '匿名' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-key">类型</span>
-              <t-tag
-                :theme="currentRecord.userRole === 'STUDENT' ? 'primary' : 'warning'"
-                variant="light"
-                size="small"
-              >
-                {{ currentRecord.userRole === 'STUDENT' ? '学生' : '教师' }}
-              </t-tag>
-            </div>
-            <div class="info-item">
-              <span class="info-key">活动名称</span>
-              <span class="info-val">{{ currentRecord.activityTitle || '-' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-key">反馈标题</span>
-              <span class="info-val">{{ currentRecord.title || '-' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-key">提交时间</span>
-              <span class="info-val">{{ formatDateTime(currentRecord.createTime) }}</span>
-            </div>
-          </div>
-
-          <div class="feedback-body">
-            <div class="section-title">反馈内容</div>
-            <div class="content-full">{{ currentRecord.content || '暂无内容' }}</div>
-          </div>
-
-          <div v-if="attachmentsOf(currentRecord).length > 0" class="attachment-section">
-            <div class="section-title">附件列表</div>
-            <div
-              v-for="(url, index) in attachmentsOf(currentRecord)"
-              :key="index"
-              class="attachment-item"
-              @click.stop="downloadFile(url)"
-            >
-              <span class="attachment-icon-small">📎</span>
-              <span class="file-name">{{ fileNameOf(url) || '附件' + (index + 1) }}</span>
-              <span class="download-text">下载</span>
-            </div>
-          </div>
-
-          <div class="detail-footer">
-            <button class="footer-close-btn" @click.stop="closeDetailDialog">我知道了</button>
-          </div>
-        </div>
+        <div class="empty-icon">📭</div>
+        <div class="empty-text">{{ keyword ? '未找到匹配的反馈' : '暂无反馈记录' }}</div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { feedbackApi } from '@/api/feedback'
 import { activityApi } from '@/api/activity'
 import { getFileUrl } from '@/utils/file'
-import { MessagePlugin } from 'tdesign-vue-next'
 import H5NavBar from '../components/H5NavBar.vue'
+
+const router = useRouter()
 
 const loading = ref(false)
 const records = ref([])
@@ -153,15 +124,32 @@ const keyword = ref('')
 const activityFilter = ref(null)
 const activityOptions = ref([])
 
-const detailVisible = ref(false)
-const currentRecord = ref(null)
+let searchTimer = null
 
-// 计算后的展示列表（支持搜索和筛选）
+// 防抖搜索
+const debouncedSearch = () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    // 纯前端筛选，无需请求
+  }, 200)
+}
+
+// 统计
+const studentCount = computed(() =>
+  records.value.filter(r => r.userRole === 'STUDENT').length
+)
+const teacherCount = computed(() =>
+  records.value.filter(r => r.userRole === 'TEACHER').length
+)
+
+// 筛选后的列表（前端实时筛选）
 const viewList = computed(() => {
   let list = records.value
+  // 活动筛选
   if (activityFilter.value) {
     list = list.filter(item => String(item.activityId) === String(activityFilter.value))
   }
+  // 关键词筛选（标题或内容）
   if (keyword.value && keyword.value.trim()) {
     const kw = keyword.value.trim().toLowerCase()
     list = list.filter(item =>
@@ -172,17 +160,15 @@ const viewList = computed(() => {
   return list
 })
 
-// 获取附件（兼容多种数据格式）
+// 获取附件（兼容多种格式）
 const attachmentsOf = (row) => {
   if (!row) return []
-  // 优先处理 attachments 数组（后端可能直接返回对象数组）
   if (Array.isArray(row.attachments) && row.attachments.length > 0) {
     return row.attachments.map(a => {
       const url = a.url || a.fileUrl || a
       return getFileUrl(typeof url === 'string' ? url : String(url))
     })
   }
-  // 处理 attachmentUrls 字段（后端存储的逗号分隔字符串）
   if (row.attachmentUrls) {
     if (Array.isArray(row.attachmentUrls)) {
       return row.attachmentUrls.filter(Boolean).map(url => getFileUrl(url))
@@ -198,52 +184,23 @@ const attachmentsOf = (row) => {
   return []
 }
 
-// 从URL中提取文件名（用于显示）
-const fileNameOf = (url) => {
-  if (!url) return ''
-  try {
-    const parts = String(url).split('/')
-    let filename = parts[parts.length - 1].split('?')[0]
-    // 如果是 UUID 或过长的文件名，显示前20位
-    if (filename.length > 40) filename = filename.substring(0, 37) + '...'
-    return filename
-  } catch (e) {
-    return '附件'
-  }
-}
-
-// 下载附件
-const downloadFile = (url) => {
-  if (url) {
-    window.open(url, '_blank')
-  } else {
-    MessagePlugin.info('附件地址无效')
-  }
-}
-
 // 获取反馈列表
 const fetchData = async () => {
   loading.value = true
   try {
-    const res = await feedbackApi.getCollegeFeedbacks(
-      activityFilter.value || undefined
-    )
-    let data = res.data
-    let list = []
-    if (Array.isArray(data)) {
-      list = data
-    } else if (data && Array.isArray(data.records)) {
-      list = data.records
-    } else if (data && Array.isArray(data.data)) {
-      list = data.data
-    } else {
-      list = []
+    const res = await feedbackApi.getCollegeFeedbacks()
+    let data = []
+    if (Array.isArray(res.data)) {
+      data = res.data
+    } else if (res.data && Array.isArray(res.data.records)) {
+      data = res.data.records
+    } else if (res.data && Array.isArray(res.data.data)) {
+      data = res.data.data
     }
-    records.value = list
+    records.value = data || []
   } catch (err) {
     console.error('获取反馈列表失败', err)
     records.value = []
-    MessagePlugin.error('获取反馈列表失败')
   } finally {
     loading.value = false
   }
@@ -268,21 +225,36 @@ const fetchActivities = async () => {
   }
 }
 
-// 搜索/筛选
+// 搜索
 const handleSearch = () => {
-  fetchData()
+  // 前端筛选已在 computed 中实现
 }
 
-// 打开详情
-const showDetail = (row) => {
-  currentRecord.value = row
-  detailVisible.value = true
+// 清空搜索
+const clearSearch = () => {
+  keyword.value = ''
 }
 
-// 关闭详情
-const closeDetailDialog = () => {
-  detailVisible.value = false
-  currentRecord.value = null
+// 设置活动筛选
+const setActivityFilter = (id) => {
+  activityFilter.value = id
+}
+
+// 跳转详情页（通过 state 传递数据）
+const goDetail = (item) => {
+  if (!item || !item.id) return
+  router.push({
+    path: `/h5/college/feedback/${item.id}`,
+    state: { feedbackRecord: item }
+  })
+}
+
+// 文本截断
+const truncate = (text, len) => {
+  if (!text) return ''
+  const str = String(text).replace(/\s+/g, ' ')
+  if (str.length <= len) return str
+  return str.substring(0, len) + '...'
 }
 
 // 格式化时间
@@ -290,11 +262,11 @@ const formatDateTime = (str) => {
   if (!str) return '-'
   try {
     const d = new Date(str)
-    if (isNaN(d.getTime())) return String(str).substring(0, 19)
+    if (isNaN(d.getTime())) return String(str).substring(0, 16)
     const pad = (n) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
   } catch (e) {
-    return String(str)
+    return String(str).substring(0, 16)
   }
 }
 
@@ -308,19 +280,39 @@ onMounted(() => {
 .h5-college-feedback {
   min-height: 100vh;
   background: #f5f7fa;
-  padding-bottom: 60px;
+  padding-bottom: 40px;
 }
 
+/* Loading */
 .loading-wrap {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  padding: 60px 0;
+  padding: 80px 20px;
+  gap: 12px;
 }
 
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* 内容区 */
 .content-wrap {
   padding: 12px;
 }
 
+/* 筛选栏 */
 .filter-bar {
   background: #fff;
   border-radius: 12px;
@@ -328,32 +320,113 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 
+/* 搜索行 */
 .search-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-.search-row :deep(.t-input) {
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  background: #f3f4f6;
+  border-radius: 100px;
   flex: 1;
+}
+
+.search-input-wrap input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: #374151;
+}
+
+.clear-btn {
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  border-radius: 50%;
+  background: #d1d5db;
+  color: #fff;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .search-btn {
   background: #2563eb;
   color: #fff;
   border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
+  border-radius: 100px;
+  padding: 9px 18px;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
+  flex-shrink: 0;
+}
+
+.search-btn:active {
+  background: #1d4ed8;
+}
+
+/* 活动筛选 chip */
+.activity-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  background: #f3f4f6;
+  color: #6b7280;
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.filter-row {
-  width: 100%;
+.filter-chip.active {
+  background: #2563eb;
+  color: #fff;
 }
 
+.filter-chip.more-chip {
+  background: #e5e7eb;
+  color: #9ca3af;
+}
+
+/* 统计信息 */
+.stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.stat-item {
+  color: #2563eb;
+  font-weight: 500;
+}
+
+/* 反馈列表 */
 .feedback-list {
   display: flex;
   flex-direction: column;
@@ -365,20 +438,37 @@ onMounted(() => {
   border-radius: 12px;
   padding: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .feedback-item:active {
   transform: scale(0.98);
-  background: #f3f4f6;
+  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.08);
 }
 
 .item-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 10px;
   flex-wrap: wrap;
+}
+
+.role-tag {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-weight: 500;
+}
+
+.role-student {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.role-teacher {
+  background: #fef3c7;
+  color: #d97706;
 }
 
 .item-realname {
@@ -401,7 +491,7 @@ onMounted(() => {
 }
 
 .item-activity {
-  font-size: 13px;
+  font-size: 12px;
   color: #6b7280;
   margin-bottom: 8px;
 }
@@ -421,215 +511,48 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 8px 12px;
   background: #f3f4f6;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 12px;
   color: #6b7280;
   width: fit-content;
+  margin-bottom: 10px;
 }
 
 .attachment-icon {
   font-size: 14px;
 }
 
-.empty-wrap {
+.item-footer {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 60px 0;
+  justify-content: flex-end;
+  padding-top: 6px;
+  border-top: 1px solid #f3f4f6;
 }
 
-.empty-text {
-  color: #9ca3af;
-  font-size: 14px;
-}
-
-/* 详情覆盖层 & 弹窗样式 */
-.detail-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 9999;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.detail-panel {
-  background: #fff;
-  border-radius: 16px 16px 0 0;
-  width: 100%;
-  max-width: 640px;
-  max-height: 85vh;
-  overflow-y: auto;
-  padding: 0;
-  animation: slideUp 0.25s ease;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-.detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
-  position: sticky;
-  top: 0;
-  background: #fff;
-  z-index: 10;
-}
-
-.detail-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.close-btn {
-  background: #f3f4f6;
-  color: #4b5563;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.close-btn:active {
-  background: #e5e7eb;
-}
-
-.detail-body {
-  padding: 16px 20px 30px;
-}
-
-.info-section {
-  background: #f9fafb;
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 16px;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.info-item:last-child {
-  border-bottom: none;
-}
-
-.info-key {
-  font-size: 13px;
-  color: #6b7280;
-  width: 80px;
-  flex-shrink: 0;
-}
-
-.info-val {
-  font-size: 13px;
-  color: #1f2937;
-  flex: 1;
-  word-break: break-all;
-}
-
-.feedback-body {
-  margin-bottom: 16px;
-}
-
-.section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 10px;
-  padding-left: 8px;
-  border-left: 3px solid #2563eb;
-}
-
-.content-full {
-  background: #f9fafb;
-  border-radius: 10px;
-  padding: 14px;
-  font-size: 14px;
-  color: #374151;
-  line-height: 1.8;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.attachment-section {
-  margin-top: 16px;
-}
-
-.attachment-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  background: #f9fafb;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.attachment-item:active {
-  background: #e5e7eb;
-}
-
-.attachment-icon-small {
-  font-size: 16px;
-}
-
-.file-name {
-  font-size: 13px;
-  color: #374151;
-  flex: 1;
-  word-break: break-all;
-}
-
-.download-text {
+.view-detail {
   font-size: 13px;
   color: #2563eb;
   font-weight: 500;
 }
 
-/* 底部关闭按钮 */
-.detail-footer {
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid #f3f4f6;
+/* 空状态 */
+.empty-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  gap: 10px;
 }
 
-.footer-close-btn {
-  width: 100%;
-  background: #2563eb;
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 12px 0;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
+.empty-icon {
+  font-size: 52px;
 }
 
-.footer-close-btn:active {
-  background: #1d4ed8;
+.empty-text {
+  color: #6b7280;
+  font-size: 14px;
 }
 </style>

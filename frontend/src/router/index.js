@@ -154,11 +154,13 @@ const routes = [
             { path: 'my-feedbacks', name: 'H5MyFeedbacks', component: () => import('@/views/h5/myActivity/MyFeedbacks.vue') },
             // 教师端 H5 路由
             { path: 'teacher/activities', name: 'H5TeacherActivities', component: () => import('@/views/h5/teacher/Activities.vue') },
+            { path: 'teacher/activity/:id', name: 'H5TeacherActivityDetail', component: () => import('@/views/h5/teacher/ActivityDetail.vue') },
             { path: 'teacher/my-registrations', name: 'H5TeacherMyRegistrations', component: () => import('@/views/h5/teacher/MyRegistrations.vue') },
             // 学院端 H5 路由
             { path: 'college/pending', name: 'H5CollegePending', component: () => import('@/views/h5/college/PendingAudit.vue') },
             { path: 'college/history', name: 'H5CollegeHistory', component: () => import('@/views/h5/college/History.vue') },
             { path: 'college/feedback', name: 'H5CollegeFeedback', component: () => import('@/views/h5/college/Feedback.vue') },
+            { path: 'college/feedback/:id', name: 'H5CollegeFeedbackDetail', component: () => import('@/views/h5/college/FeedbackDetail.vue') },
             // 学校端 H5 路由
             { path: 'school/dashboard', name: 'H5SchoolDashboard', component: () => import('@/views/h5/school/Dashboard.vue') },
             { path: 'school/activity-list', name: 'H5SchoolActivityList', component: () => import('@/views/h5/school/ActivityList.vue') },
@@ -239,7 +241,7 @@ const toMobilePath = (path) => {
     }
     if (exactMap[path]) return exactMap[path]
     if (path.startsWith('/student/activity/')) return path.replace('/student/activity/', '/h5/activity/')
-    if (path.startsWith('/teacher/activity/')) return path.replace('/teacher/activity/', '/h5/activity/')
+    if (path.startsWith('/teacher/activity/')) return path.replace('/teacher/activity/', '/h5/teacher/activity/')
     if (path.startsWith('/student/register/')) return path.replace('/student/register/', '/h5/register/')
     if (path.startsWith('/teacher/register/')) return path.replace('/teacher/register/', '/h5/register/')
     if (path.startsWith('/student/test/start/')) return path.replace('/student/test/start/', '/h5/test/start/')
