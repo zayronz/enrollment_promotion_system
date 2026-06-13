@@ -170,7 +170,7 @@ const routes = [
             { path: 'school/user-list', name: 'H5SchoolUserList', component: () => import('@/views/h5/school/UserList.vue') },
             { path: 'school/feedback-list', name: 'H5SchoolFeedbackList', component: () => import('@/views/h5/school/FeedbackList.vue') },
             // 个人中心
-            { path: 'profile', name: 'H5Profile', component: () => import('@/views/common/Profile.vue') },
+            { path: 'profile', name: 'H5Profile', component: () => import('@/views/h5/profile/H5Profile.vue') },
             { path: 'change-password', name: 'H5ChangePassword', component: () => import('@/views/h5/profile/ChangePassword.vue') },
             { path: 'search-empty', name: 'H5SearchEmpty', component: () => import('@/views/h5/home/SearchEmpty.vue') },
             { path: 'network-error', name: 'H5NetworkError', component: () => import('@/views/h5/home/NetworkError.vue') },

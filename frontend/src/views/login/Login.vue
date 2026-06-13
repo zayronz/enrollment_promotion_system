@@ -98,7 +98,6 @@
             <t-button block variant="outline" theme="primary" @click="handleSsoMock">
               统一身份认证登录（模拟）
             </t-button>
-            <p>演示 LOG-05：真实部署时由学校统一认证平台携带票据自动登录；本项目用学生测试账号模拟单点登录。</p>
           </div>
 
           <!-- 测试账号 -->
